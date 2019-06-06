@@ -1,0 +1,6 @@
+*.pyc
+src/__pycache__/
+figs/
+figs_sup/
+spec_inputs/
+*.DS_Store
