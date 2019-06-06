@@ -9,12 +9,14 @@ import matplotlib
 import os
 from scipy.optimize import brentq
 from scipy.interpolate import interp1d
+import scipy.integrate as integrate
 from matplotlib.patches import Rectangle
 from prettytable import PrettyTable
 import src.atm_pro as atm_pro
 import src.sulfur as sulfur
 import src.mie as mie
 import src.simtransspec as sts
+import src.photochem as pc
 
 ################################################################
 # SETUP
@@ -131,10 +133,27 @@ print(t)
 print('\n------------------------------------\n'
       +'LIMITING PHOTOCHEMICAL TIMESCALE\n------------------------------------')
 
-# 
+# calculate limiting timescale for SO2 to H2SO4 conversion
+# for a G star and M star
+
+cross_w_SO2, cross_max, spectrum_photo_G = pc.set_up_photochem()
+spectrum_photo_M = pc.set_up_photochem(f_XUV=10.,f_UV=0.1)[2]
+t_G = (0.5*integrate.simps(cross_max*spectrum_photo_G[:,1],spectrum_photo_G[:,0],even='last'))**(-1) #[s]
+t_M = (0.5*integrate.simps(cross_max*spectrum_photo_M[:,1],spectrum_photo_M[:,0],even='last'))**(-1) #[s]
+pc.plot_stellar_spectrum(spectrum_photo_G)
+pc.plot_stellar_spectrum(spectrum_photo_M,fig_name='stellar_spec_M')
+pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max)
+pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max,is_SO2=False)
 
 # establish SO2 is not optically thick and thus should not contribute to
 # the absorbtion cross section
+pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2)
+
+# print results of limiting timescales without SO2
+t = PrettyTable(['star','t [s]', 't [days]'])
+t.add_row(['G','%1.F'%t_G,'%1.2F'%(t_G/3600./24.)])
+t.add_row(['M','%1.F'%t_M,'%1.2F'%(t_M/3600./24.)])
+print(t)
 
 
 ################################################################
