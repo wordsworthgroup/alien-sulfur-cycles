@@ -586,5 +586,5 @@ def calc_uSO2_boundary(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
     # critical partial pressure of SO2 at the tropopause
     p_so2_boundary = g/4./np.pi/R_p**2*N_H2SO4*m_SO2*t_convert/t_life #[Pa]
     # convert p_so2_boundary to mass column in units of molecules/cm2
-    u_so2_boundary = p_so2_boundary #[molecules/cm2]
+    u_so2_boundary = p_so2_boundary/g*mu_so2/mu_atm*N_A/mu_so2*1e-4 #[molecules/cm2]
     return u_so2_boundary

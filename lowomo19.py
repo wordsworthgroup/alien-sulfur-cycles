@@ -17,6 +17,7 @@ import src.sulfur as sulfur
 import src.mie as mie
 import src.simtransspec as sts
 import src.photochem as pc
+from cycler import cycler
 
 ################################################################
 # SETUP
@@ -140,20 +141,37 @@ cross_w_SO2, cross_max, spectrum_photo_G = pc.set_up_photochem()
 spectrum_photo_M = pc.set_up_photochem(f_XUV=10.,f_UV=0.1)[2]
 t_G = (0.5*integrate.simps(cross_max*spectrum_photo_G[:,1],spectrum_photo_G[:,0],even='last'))**(-1) #[s]
 t_M = (0.5*integrate.simps(cross_max*spectrum_photo_M[:,1],spectrum_photo_M[:,0],even='last'))**(-1) #[s]
-pc.plot_stellar_spectrum(spectrum_photo_G)
-pc.plot_stellar_spectrum(spectrum_photo_M,fig_name='stellar_spec_M')
-pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max)
-pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max,is_SO2=False)
-
-# establish SO2 is not optically thick and thus should not contribute to
-# the absorbtion cross section
-pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2)
 
 # print results of limiting timescales without SO2
 t = PrettyTable(['star','t [s]', 't [days]'])
 t.add_row(['G','%1.F'%t_G,'%1.2F'%(t_G/3600./24.)])
 t.add_row(['M','%1.F'%t_M,'%1.2F'%(t_M/3600./24.)])
 print(t)
+
+# create additional figures of interest to photochemical calculation
+print('\ncreating Supplemental Figure stellar_spec_G')
+print('to show assumed stellar spectrum for a G star')
+pc.plot_stellar_spectrum(spectrum_photo_G)
+print('Supplemental Figure stellar_spec_G saved\n')
+
+print('creating Supplemental Figure stellar_spec_M')
+print('to show assumed stellar spectrum for a M star')
+pc.plot_stellar_spectrum(spectrum_photo_M,fig_name='stellar_spec_M')
+print('Supplemental Figure stellar_spec_M saved\n')
+
+print('creating Supplemental Figures abs_x_*')
+print('to show absorbtion cross sections for different molecules of interest')
+pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max)
+pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max,is_SO2=False)
+print('Supplemental Figures abs_x_* saved\n')
+
+# establish SO2 is not optically thick and thus should not contribute to
+# the absorbtion cross section
+print('creating Supplemental Figure tau_SO2')
+print('to establish SO2 is not optically thick')
+u_SO2 = sulfur.calc_uSO2_boundary(0.1,1e-6,288,200,1.01325e5,1,1,t_convert=max(t_G,t_M))
+pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2,u_SO2)
+print('Supplemental Figure tau_SO2 saved')
 
 
 ################################################################
@@ -182,10 +200,125 @@ print('input for low water clouds saved')
 sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,100e-6,True)
 print('input for high water clouds saved')
 
-print('creating Figure 3')
+print('\ncreating Figure 3')
 
 # FIGURE 3
+
+n = 6
+new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+taus = ['0.0001','0.001','0.01','0.1','1']
+for i,x in enumerate(['-04','-03','-02','-01','+00']):
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
+    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\tau_{haze}$=%s'%(taus[i]))
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+plt.tick_params(axis='both', which='major')
+plt.xlim(0.3,50)
+# plt.ylim(83.5,85.5)
+plt.savefig('figs/fig03.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+
+# # FIGURE 3
+# taus = ['1','0.1','0.01','0.001','0.0001']
+# for i,x in enumerate(['+00','-01','-02','-03','-04']):
+#     f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
+#     avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+#     plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\tau_{haze}$=%s'%(taus[i]))
+# f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# plt.xscale('log')
+# plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+# plt.xlabel(r'wavelength [$\mu$m]')
+# plt.ylabel('transit depth [ppm]')
+# plt.legend(bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+# plt.tick_params(axis='both', which='major')
+# plt.xlim(0.3,50)
+# # plt.ylim(83.5,85.5)
+# plt.savefig('figs/fig03b.pdf',bbox_inches='tight',transparent=True)
+# plt.close()
 print('Figure 3 saved')
+
+print('\ncreating Supplemental Figure smallest_r')
+print('to test smallest aerosol particle radius at which Mie vs Rayleigh scattering is distinguishable')
+
+# n = 11
+n = 6
+new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# for i in range(1,10):
+for i in range(1,5):
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_'+str(i)+'e-07_r_water_0e+00.txt'
+    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 0.'+str(i)+r' $\mu$m')
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 1 $\mu$m')
+
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+plt.tick_params(axis='both', which='major')
+plt.xlim(0.3,50)
+
+plt.savefig('figs_sup/smallest_r2.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+print('Supplemental Figure smallest_r saved\n')
+
+print('creating Supplemental Figure other_scatters')
+print('to test spectra distinguishable when high & low water clouds are present vs H2SO4-H2O aerosols')
+
+
+n = 4
+new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_5e-06.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='low water clouds')
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_1e-04.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='high water clouds')
+
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'H$_2$SO$_4$-H$_2$O aerosols')
+
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+plt.tick_params(axis='both', which='major')
+plt.xlim(0.3,50)
+
+plt.savefig('figs_sup/other_scatters.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+print('Supplemental Figure other_scatters saved')
 
 
 ################################################################

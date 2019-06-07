@@ -202,3 +202,38 @@ def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
     atm_name = 'tau_%1.e_r_h2so4h2o_%1.e_r_water_%1.e'%(tau,r_h2so4h2o,r_cloud)
     # save profile as csv
     profile_df.to_csv('./spec_inputs/atm_pro_'+atm_name+'.csv',index=False)
+
+def calc_avg_spec(fname,n_chunks=500):
+    '''
+    average spectrum over log spaced bins
+    inputs:
+        * fname [string] - file name containing spectrum
+        * n_chunks [] - number of bins to average to
+    outputs:
+        * avg_wvlngth [um] - wavelengths corresponding to averaged spectrum
+        * avg_spec [ppm] - averaged spectrum
+    '''
+    spect = np.genfromtxt(fname)
+    spect = spect[np.where(spect[:,0]<=55)]
+    wvlngth = spect[:,0]
+    spct = spect[:,1]
+    m = wvlngth.shape[0]
+    avg_wvlngth = np.logspace(np.log10(np.amax(wvlngth)),np.log10(np.amin(wvlngth)),n_chunks+1)
+    i = 0
+    avg_spec = np.zeros(n_chunks)
+    for j,w in enumerate(avg_wvlngth):
+        spec_avger = []
+        if j!=0:
+            if i<m:
+                while wvlngth[i]>=w:
+                    spec_avger.append(spct[i])
+                    i+=1
+                    if i>=m:
+                        break
+
+            avg_spec[j-1] = np.mean(spec_avger)
+            # if np.isnan(avg_spec[j-1]):
+            #     print('nan!')
+            #     print(avg_wvlngth[j-1])
+    avg_wvlngth = avg_wvlngth[:-1]
+    return avg_wvlngth, avg_spec*1e6
