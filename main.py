@@ -4,7 +4,6 @@
 # oxidized atmosphere
 ################################################################
 import sulfur
-import asc_plot
 
 # SET PLANETARY PARAMETERS HERE
 
