@@ -174,146 +174,146 @@ pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2,u_SO2)
 print('Supplemental Figure tau_SO2 saved')
 
 
-################################################################
-# SIMULATED TRANSMISSION SPECTRA
-# Figure 3 & discussion in Section 3.6 & results in Section 4.1
-# also inputs that generate simulated transmission spectra
-################################################################
-print('\n------------------------------------\n'
-      +'SIMULATED TRANSMISSION SPECTRA\n------------------------------------')
-# create inputs for transmission spectra
-print('creating inputs for transmission spectra')
-taus = np.logspace(-4,1,6)
-for tau in taus:
-    sts.input_pro(1.01325e5,288,200,0.01,1000,tau,1.e-6,0,False)
-    print('input for tau_h2so4 = %1.1F, r_h2so4 = 1 um saved'%tau)
-rs = np.linspace(1,10,10)*1.e-7
-for r in rs:
-    sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,r,0,False)
-    print('input for tau_h2so4 = 0.1, r_h2so4 = %1.1F um saved'%(r*1e6))
-#clear
-sts.input_pro(1.01325e5,288,200,0.1,1000,0.1,0,0,False)
-print('input for clear sky saved')
-# low clouds
-sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,5.e-6,False)
-print('input for low water clouds saved')
-# high clouds
-sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,100e-6,True)
-print('input for high water clouds saved')
-
-# plot tranmission spectra with varying tau
-print('\ncreating Figure 3')
-
-# FIGURE 3
-
-# set up color scheme for plot
-n = 6
-new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
-plt.rc('axes', prop_cycle=cycler('color', new_colors))
-
-# plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
-# plot spectra of various taus considered for r = 1 um
-taus = ['0.0001','0.001','0.01','0.1','1']
-for i,x in enumerate(['-04','-03','-02','-01','+00']):
-    f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
-    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\tau_{haze}$=%s'%(taus[i]))
-# plot logistics
-plt.xscale('log')
-plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
-plt.xlabel(r'wavelength [$\mu$m]')
-plt.ylabel('transit depth [ppm]')
-plt.tick_params(axis='both', which='major')
-plt.xlim(0.3,50)
-# order legend labels to match plot order
-handles, labels = plt.gca().get_legend_handles_labels()
-plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
-plt.savefig('figs/fig03.pdf',bbox_inches='tight',transparent=True)
-plt.close()
-
-print('Figure 3 saved')
-
-print('\ncreating Supplemental Figure smallest_r')
-print('to test smallest aerosol particle radius at which Mie vs Rayleigh scattering is distinguishable')
-
-# plot spectra of various H2SO4-H2O aerosol radii considered for tau = 0.1
-# set up color scheme for plot
-n = 11
-new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
-plt.rc('axes', prop_cycle=cycler('color', new_colors))
-
-# plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
-for i in range(1,10):
-    f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_'+str(i)+'e-07_r_water_0e+00.txt'
-    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 0.'+str(i)+r' $\mu$m')
-
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 1 $\mu$m')
-# plot logistics
-plt.xscale('log')
-plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
-plt.xlabel(r'wavelength [$\mu$m]')
-plt.ylabel('transit depth [ppm]')
-plt.xlim(0.3,50)
-plt.tick_params(axis='both', which='major')
-# order legend labels to match plot order
-handles, labels = plt.gca().get_legend_handles_labels()
-plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
-
-
-plt.savefig('figs_sup/smallest_r.pdf',bbox_inches='tight',transparent=True)
-plt.close()
-print('Supplemental Figure smallest_r saved\n')
-
-print('creating Supplemental Figure other_scatters')
-print('to test spectra distinguishable when high & low water clouds are present vs H2SO4-H2O aerosols')
-
-# plot spectra with various scatters/absorbers present
-# set up color scheme for plot
-n = 4
-new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
-plt.rc('axes', prop_cycle=cycler('color', new_colors))
-
-# plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
-
-# plot low water clouds
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_5e-06.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='low water clouds')
-
-# plot high water clouds
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_1e-04.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='high water clouds')
-
-# plot H2SO4-H2O aerosols
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'H$_2$SO$_4$-H$_2$O aerosols')
-# plot logistics
-plt.xscale('log')
-plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
-plt.xlabel(r'wavelength [$\mu$m]')
-plt.ylabel('transit depth [ppm]')
-plt.tick_params(axis='both', which='major')
-plt.xlim(0.3,50)
-# order legend labels to match plot order
-handles, labels = plt.gca().get_legend_handles_labels()
-plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
-plt.savefig('figs_sup/other_scatters.pdf',bbox_inches='tight',transparent=True)
-plt.close()
-print('Supplemental Figure other_scatters saved')
+# ################################################################
+# # SIMULATED TRANSMISSION SPECTRA
+# # Figure 3 & discussion in Section 3.6 & results in Section 4.1
+# # also inputs that generate simulated transmission spectra
+# ################################################################
+# print('\n------------------------------------\n'
+#       +'SIMULATED TRANSMISSION SPECTRA\n------------------------------------')
+# # create inputs for transmission spectra
+# print('creating inputs for transmission spectra')
+# taus = np.logspace(-4,1,6)
+# for tau in taus:
+#     sts.input_pro(1.01325e5,288,200,0.01,1000,tau,1.e-6,0,False)
+#     print('input for tau_h2so4 = %1.1F, r_h2so4 = 1 um saved'%tau)
+# rs = np.linspace(1,10,10)*1.e-7
+# for r in rs:
+#     sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,r,0,False)
+#     print('input for tau_h2so4 = 0.1, r_h2so4 = %1.1F um saved'%(r*1e6))
+# #clear
+# sts.input_pro(1.01325e5,288,200,0.1,1000,0.1,0,0,False)
+# print('input for clear sky saved')
+# # low clouds
+# sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,5.e-6,False)
+# print('input for low water clouds saved')
+# # high clouds
+# sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,100e-6,True)
+# print('input for high water clouds saved')
+#
+# # plot tranmission spectra with varying tau
+# print('\ncreating Figure 3')
+#
+# # FIGURE 3
+#
+# # set up color scheme for plot
+# n = 6
+# new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
+# plt.rc('axes', prop_cycle=cycler('color', new_colors))
+#
+# # plot clear spectrum
+# f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# # plot spectra of various taus considered for r = 1 um
+# taus = ['0.0001','0.001','0.01','0.1','1']
+# for i,x in enumerate(['-04','-03','-02','-01','+00']):
+#     f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
+#     avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+#     plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\tau_{haze}$=%s'%(taus[i]))
+# # plot logistics
+# plt.xscale('log')
+# plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+# plt.xlabel(r'wavelength [$\mu$m]')
+# plt.ylabel('transit depth [ppm]')
+# plt.tick_params(axis='both', which='major')
+# plt.xlim(0.3,50)
+# # order legend labels to match plot order
+# handles, labels = plt.gca().get_legend_handles_labels()
+# plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+# plt.savefig('figs/fig03.pdf',bbox_inches='tight',transparent=True)
+# plt.close()
+#
+# print('Figure 3 saved')
+#
+# print('\ncreating Supplemental Figure smallest_r')
+# print('to test smallest aerosol particle radius at which Mie vs Rayleigh scattering is distinguishable')
+#
+# # plot spectra of various H2SO4-H2O aerosol radii considered for tau = 0.1
+# # set up color scheme for plot
+# n = 11
+# new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
+# plt.rc('axes', prop_cycle=cycler('color', new_colors))
+#
+# # plot clear spectrum
+# f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# for i in range(1,10):
+#     f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_'+str(i)+'e-07_r_water_0e+00.txt'
+#     avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+#     plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 0.'+str(i)+r' $\mu$m')
+#
+# f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 1 $\mu$m')
+# # plot logistics
+# plt.xscale('log')
+# plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+# plt.xlabel(r'wavelength [$\mu$m]')
+# plt.ylabel('transit depth [ppm]')
+# plt.xlim(0.3,50)
+# plt.tick_params(axis='both', which='major')
+# # order legend labels to match plot order
+# handles, labels = plt.gca().get_legend_handles_labels()
+# plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+#
+#
+# plt.savefig('figs_sup/smallest_r.pdf',bbox_inches='tight',transparent=True)
+# plt.close()
+# print('Supplemental Figure smallest_r saved\n')
+#
+# print('creating Supplemental Figure other_scatters')
+# print('to test spectra distinguishable when high & low water clouds are present vs H2SO4-H2O aerosols')
+#
+# # plot spectra with various scatters/absorbers present
+# # set up color scheme for plot
+# n = 4
+# new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
+# plt.rc('axes', prop_cycle=cycler('color', new_colors))
+#
+# # plot clear spectrum
+# f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+#
+# # plot low water clouds
+# f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_5e-06.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='low water clouds')
+#
+# # plot high water clouds
+# f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_1e-04.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='high water clouds')
+#
+# # plot H2SO4-H2O aerosols
+# f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
+# avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+# plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'H$_2$SO$_4$-H$_2$O aerosols')
+# # plot logistics
+# plt.xscale('log')
+# plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+# plt.xlabel(r'wavelength [$\mu$m]')
+# plt.ylabel('transit depth [ppm]')
+# plt.tick_params(axis='both', which='major')
+# plt.xlim(0.3,50)
+# # order legend labels to match plot order
+# handles, labels = plt.gca().get_legend_handles_labels()
+# plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+# plt.savefig('figs_sup/other_scatters.pdf',bbox_inches='tight',transparent=True)
+# plt.close()
+# print('Supplemental Figure other_scatters saved')
 
 
 ################################################################
@@ -408,7 +408,7 @@ t_convert_M_lim =  t_M #[s]
 t_convert_G_lim =  t_G #[s]
 t_convert_b =      3600.*24.*30. #[s]
 alpha_lim = 1 #[]
-alpha_b = 0.01 #[]
+alpha_b = 0.1 #[]
 w = 0.75 # [kg/kg]
 t_mix = 1.*s_in_yr # [s]
 n_outgass_lim = 200. # [modern Earth outgassing]
@@ -418,12 +418,13 @@ f_n2 = 0.7809 # [] N2
 f_o2 = 0.2095 # [] O2
 f_co2 = 400.e-6 # [] #CO2
 # relative humidity at surface
-RH_h2o_surf_b = 0.75 # []
+RH_h2o_surf_b = 0.77 # []
 RH_h2o_surf_lim = 0. # [] (dry)
 
 # critical mass column of SO2 for observation
-u_so2_lim = 0.0001 # [kg/m3]
-u_so2_b = 0.1 # [kg/m3]
+u_so2_b = 1e-6*p_surf/9.81*sulfur.mu_so2/mu_atm # [kg/m3]
+u_so2_lim = 1e-2*u_so2_b # [kg/m3]
+
 
 # print critical total atmospheric sulfur to be observable
 # for Earth-like planetary conditions
@@ -437,7 +438,7 @@ t.add_row(['aerosol','best','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
 atoms, moles, kg = sulfur.calc_crit_S_atm_obs_haze(tau, r_M_lim, T_surf, T_strat, p_surf,
                             R_p_earth, M_p_earth, w, t_mix,
-                            t_convert_M_lim, 1.,0.,f_n2,f_o2,f_co2)
+                            t_convert_M_lim, 1.,0.,f_n2,f_o2,f_co2,is_M)
 t.add_row(['aerosol','limiting M','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
 atoms, moles, kg = sulfur.calc_crit_S_atm_obs_haze(tau, r_G_lim, T_surf, T_strat, p_surf,
@@ -458,7 +459,7 @@ print(t)
 # sensitivities to planetary parameters for critical sulfur required
 # in the atmosphere for observation
 print('creating Figure 4')
-fig, axarr = plt.subplots(2,3,sharey=True,figsize=(16, 12))
+fig, axarr = plt.subplots(3,2,sharey=True,figsize=(6,8))
 # SURFACE TEMPERATURE
 axarr[0,0].set_title(r'$T_\mathrm{surf}$')
 axarr[0,0].set_xlabel(r'$T_\mathrm{surf}$ [K]')
@@ -479,6 +480,7 @@ axarr[0,0].axvline(T_surf,ls='--',c='0.8')
 
 axarr[0,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 axarr[1,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
+axarr[2,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 
 # STRATOSPHERIC TEMPERATURE
 axarr[1,0].set_title(r'$T_\mathrm{strat}$')
@@ -510,8 +512,8 @@ axarr[0,1].axvline(p_surf,ls='--',c='0.8')
 axarr[0,1].set_xscale('log')
 
 # PLANET SIZE
-axarr[1,1].set_title(r'$R_\mathrm{P}$')
-axarr[1,1].set_xlabel(r'$R_\mathrm{P}$ [$R_\oplus$]')
+axarr[2,0].set_title(r'$R_\mathrm{P}$')
+axarr[2,0].set_xlabel(r'$R_\mathrm{P}$ [$R_\oplus$]')
 R_ps = np.linspace(0.25,1.6,n)*R_earth
 convert = M_earth/R_earth**(1./0.27)
 M_ps = convert*R_ps**(1./0.27)/M_earth
@@ -522,14 +524,14 @@ for i,R in enumerate(R_ps):
                                 R, M_ps[i], w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]/M_ps[i]
     N_S_size[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R,M_ps[i],f_n2,f_o2,f_co2)[0]/M_ps[i]
-axarr[1,1].plot(R_ps,N_S_size[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[1,1].plot(R_ps,N_S_size[:,1]/N_S_base1,c='b',label='gas')
-axarr[1,1].axvline(1,ls='--',c='0.8')
+axarr[2,0].plot(R_ps,N_S_size[:,0]/N_S_base0,c='0.5',label='aerosol')
+axarr[2,0].plot(R_ps,N_S_size[:,1]/N_S_base1,c='b',label='gas')
+axarr[2,0].axvline(1,ls='--',c='0.8')
 
 # ATMOSPHERIC COMPOSITION
 # vary between all N2 and all CO2
-axarr[0,2].set_title('composition')
-axarr[0,2].set_xlabel(r'$\mu$ [g/mol]')
+axarr[1,1].set_title('composition')
+axarr[1,1].set_xlabel(r'$\mu$ [g/mol]')
 percent_x = np.linspace(0,1,n)
 mus = np.zeros(n)
 N_S_mus = np.zeros((n,2))
@@ -539,13 +541,13 @@ for i,x in enumerate(percent_x):
                                 R_p_earth, M_p_earth, w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,1-x,0,x,is_G)[0]
     N_S_mus[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,1-x,0,x)[0]
-axarr[0,2].plot(mus*1e3,N_S_mus[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[0,2].plot(mus*1e3,N_S_mus[:,1]/N_S_base1,c='b',label='gas')
-axarr[0,2].axvline(mu_air*1e3,ls='--',c='0.8')
+axarr[1,1].plot(mus*1e3,N_S_mus[:,0]/N_S_base0,c='0.5',label='aerosol')
+axarr[1,1].plot(mus*1e3,N_S_mus[:,1]/N_S_base1,c='b',label='gas')
+axarr[1,1].axvline(mu_air*1e3,ls='--',c='0.8')
 
 # WATER CONTENT
-axarr[1,2].set_title(r'$f_{\mathrm{H}_2\mathrm{O}}$')
-axarr[1,2].set_xlabel(r'$f_{\mathrm{H}_2\mathrm{O}}$')
+axarr[2,1].set_title(r'$\mathrm{RH}_{\mathrm{surf}}$')
+axarr[2,1].set_xlabel(r'$\mathrm{RH}_{\mathrm{surf}}$')
 RH_h2o_surfs = np.logspace(-5,0,n)
 N_S_f_h2os = np.zeros((n,2))
 for i,RH in enumerate(RH_h2o_surfs):
@@ -555,21 +557,21 @@ for i,RH in enumerate(RH_h2o_surfs):
     N_S_f_h2os[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
 f_h2o_surfs = RH_h2o_surfs*atm_pro.p_h2osat(T_surf)/p_surf # []
 f_h2o_surf_b = RH_h2o_surf_b*atm_pro.p_h2osat(T_surf)/p_surf # []
-axarr[1,2].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[1,2].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='b',label='gas')
-axarr[1,2].axvline(f_h2o_surf_b,ls='--',c='0.8')
-axarr[1,2].set_xscale('log')
+axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='0.5',label='aerosol')
+axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='b',label='gas')
+axarr[2,1].axvline(f_h2o_surf_b,ls='--',c='0.8',label='Earth value')
+axarr[2,1].set_xscale('log')
 
 # plot logistics
 plt.ylim(1e-2,1e2)
 plt.yscale('log')
-for i in range(2):
-    for j in range(3):
-        axarr[i,j].axhspan(0.01,0.1,color='r',alpha=0.8,label='\n<10%\n' r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
+for i in range(3):
+    for j in range(2):
+        axarr[i,j].axhspan(0.01,0.1,color='r',alpha=0.8,label='< 10% ' r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 
-fig.subplots_adjust(hspace=0.35,wspace=0.05)
-handles, labels = axarr[1,2].get_legend_handles_labels()
-fig.legend(handles, labels, loc=7)
+fig.subplots_adjust(hspace=0.5,wspace=0.05)
+handles, labels = axarr[2,1].get_legend_handles_labels()
+fig.legend(handles, labels, ncol=4,loc=8)
 plt.savefig('figs/fig04.pdf',bbox_inches='tight',transparent=True)
 plt.close()
 print('Figure 4 saved')
@@ -588,7 +590,7 @@ pH = np.linspace(1,14,n)
 oceans = np.logspace(-3.03,0.1,n)
 oceans_ex0 = np.logspace(-6,0.1,n)
 oceans_ex = np.logspace(-9,0.1,n)
-oceans_ex2 = np.logspace(-11,0.1,n)
+oceans_ex2 = np.logspace(-10,0.1,n)
 ocgrid, pHgrid  = np.meshgrid(oceans,pH)
 ocgrid_ex0, pHgrid_ex0  = np.meshgrid(oceans_ex0,pH)
 ocgrid_ex, pHgrid_ex  = np.meshgrid(oceans_ex,pH)
@@ -634,6 +636,8 @@ colors = [oranges(norm_orange(-2)),oranges(norm_orange(-1)),
           blues(1-norm_blues(4)),blues(1-norm_blues(7))]
 
 
+# have option to show where t_SIV = 0.1 and pH = 6 is
+is_show_maxoc = False
 # FIGURE 10
 # plot limiting case for aerosols
 f, (ax1, ax2) = plt.subplots(1,2,sharey=True,figsize=(12,4.5))
@@ -658,10 +662,16 @@ ax1.add_patch(interesting_oc)
 ax2.add_patch(interesting_oc2)
 
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
-oc_aero_lM = 2.5e-3 # [Earth oc]
+oc_aero_lM = 2.6e-3 # [Earth oc]
 oc_aero_lG = 4e-3 # [Earth oc]
 h_aero_lM = oc_aero_lM*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 h_aero_lG = oc_aero_lG*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
+
+if is_show_maxoc:
+    ax1.axhline(oc_aero_lM)
+    ax2.axhline(oc_aero_lG)
+    ax1.axvline(6)
+    ax2.axvline(6)
 
 # set labels
 ax1.set_title('M-dwarf')
@@ -678,20 +688,22 @@ ax2.scatter(8.14,1,color='k',s=10,zorder=10)
 ax2.annotate('modern Earth ocean', (8.14,0.7))
 
 # arrows designating likeliness of haze formation given ocean parameters
-ax1.arrow(0.35, 0.35, 0.5, 0.4, transform=ax1.transAxes,
+ax1.arrow(0.36, 0.35, 0.5, 0.4, transform=ax1.transAxes,
           length_includes_head=True,head_width=0.02, head_length=0.03,fc='k')
 ax1.annotate('observable \n' r'H$_2$SO$_4$-H$_2$O haze'
              '\nincreasingly \nunlikely',(0.3,0.425),xycoords='figure fraction')
 ax1.annotate('observable \n' r'H$_2$SO$_4$-H$_2$O' '\nhaze'
              '\npossible',(0.09,0.15),xycoords='figure fraction',
              color='k')
-ax2.arrow(0.4, 0.4, 0.45, 0.35, transform=ax2.transAxes,
+ax2.arrow(0.41, 0.4, 0.45, 0.35, transform=ax2.transAxes,
           length_includes_head=True,head_width=0.02, head_length=0.03,fc='k')
 ax2.annotate('observable \n' r'H$_2$SO$_4$-H$_2$O haze'
              '\nincreasingly \nunlikely',(0.725,0.375),xycoords='figure fraction')
 ax2.annotate('observable \n' r'H$_2$SO$_4$-H$_2$O' '\nhaze'
              '\npossible',(0.525,0.2),xycoords='figure fraction',
              color='k')
+
+
 
 plt.savefig('figs/fig10.pdf',bbox_inches='tight',transparent=True)
 plt.close()
@@ -724,8 +736,12 @@ plt.annotate('modern Earth ocean', (8.3,0.4))
 
 
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
-oc_aero_b = 3e-9 #[Earth oc]
+oc_aero_b = 2.5e-8 #[Earth oc]
 h_aero_b = oc_aero_b*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
+
+if is_show_maxoc:
+    ax1.axhline(oc_aero_b)
+    ax1.axvline(6)
 # put ocean size in terms of GEL for second y-axis
 ax2 = ax1.twinx()
 ax2.set_ylabel('global equivalent ocean layer [m]')
@@ -735,7 +751,7 @@ ax2.contour(pHgrid_ex, hgrid_ex, np.log10(t_SIV_b),levels=[likely],linewidths=3,
 
 # annotate plot for context
 # arrows designating likeliness of haze formation given ocean parameters
-plt.arrow(0.3, 0.25, 0.65, 0.55, transform=plt.gca().transAxes,
+plt.arrow(0.34, 0.27, 0.57, 0.55, transform=plt.gca().transAxes,
           length_includes_head=True,head_width=0.02, head_length=0.03,fc='k')
 plt.annotate(r'observable H$_2$SO$_4$-H$_2$O'
              '\nhaze increasingly unlikely',(0.47,0.47),xycoords='figure fraction')
@@ -777,12 +793,16 @@ hgrid_ex2 = ocgrid_ex2*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2
 ax2.contour(pHgrid_ex2, hgrid_ex2, np.log10(t_SIV_gas),levels=[likely],linewidths=3,colors='w')
 
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
-oc_gas_b = 1e-10 # [Earth oc]
+oc_gas_b = 1e-9 # [Earth oc]
 h_gas_b = oc_gas_b*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
+
+if is_show_maxoc:
+    ax1.axhline(oc_gas_b)
+    ax1.axvline(6)
 
 # annotate plot for context
 # arrows designating likeliness of haze formation given ocean parameters
-plt.arrow(0.3, 0.27, 0.65, 0.55, transform=plt.gca().transAxes,
+plt.arrow(0.31, 0.27, 0.57, 0.55, transform=plt.gca().transAxes,
           length_includes_head=True,head_width=0.02, head_length=0.03,fc='k')
 plt.annotate(r'observable SO$_2$'
              '\n increasingly unlikely',(0.53,0.55),xycoords='figure fraction')
@@ -822,6 +842,10 @@ ax2.contour(pHgrid_ex0, hgrid_ex0, np.log10(t_SIV_gas_lim),levels=[likely],linew
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
 oc_gas_l = 2e-5 # [Earth oc]
 h_gas_l = oc_gas_l*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
+
+if is_show_maxoc:
+    ax1.axhline(oc_gas_l)
+    ax1.axvline(6)
 # annotate plot for context
 # arrows designating likeliness of haze formation given ocean parameters
 plt.arrow(0.35, 0.35, 0.55, 0.50, transform=plt.gca().transAxes,
