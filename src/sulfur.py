@@ -155,7 +155,7 @@ def H(pH):
 def SO2_aq(p_SO2,T):
     '''
     calculate [SO2(aq)]
-    assuming ocean in equilbrium with atmosphere from Henry's Law
+    assuming ocean in equilibrium with atmosphere from Henry's Law
 
     inputs:
         * p_SO2 [Pa] - partial pressure of SO2 at ocean-atmosphere interface
@@ -170,7 +170,7 @@ def SO2_aq(p_SO2,T):
 def HSO3(p_SO2,T,pH):
     '''
     calculate [HSO3-]
-    assuming ocean in equilbrium with atmosphere from Henry's Law,
+    assuming ocean in equilibrium with atmosphere from Henry's Law,
     assuming saturation of S(IV)
 
     inputs:
@@ -187,7 +187,7 @@ def HSO3(p_SO2,T,pH):
 def SO3(p_SO2,T,pH):
     '''
     calculate [SO3--]
-    assuming ocean in equilbrium with atmosphere from Henry's Law,
+    assuming ocean in equilibrium with atmosphere from Henry's Law,
     assuming saturation of S(IV)
 
     inputs:
@@ -204,7 +204,7 @@ def SO3(p_SO2,T,pH):
 def S_aq_concentrations(pH,T,p_SO2=1.):
     '''
     calculate concentrations of S(IV) species (SO2(aq), HSO3-, SO3--)
-    assuming ocean in equilbrium with atmosphere from Henry's Law,
+    assuming ocean in equilibrium with atmosphere from Henry's Law,
     assuming saturation of S(IV)
 
     inputs:
@@ -226,7 +226,7 @@ def S_aq_concentrations(pH,T,p_SO2=1.):
 def S_aq_fractions(pH,T,p_SO2=1.):
     '''
     calculate S(IV) distribution among S(IV) species (SO2(aq), HSO3-, SO3--)
-    assuming ocean in equilbrium with atmosphere from Henry's Law,
+    assuming ocean in equilibrium with atmosphere from Henry's Law,
     assuming saturation of S(IV)
 
     inputs:
@@ -252,7 +252,7 @@ def S_atm_ocean_frac(pH,num_earth_oceans,mu_atm=mu_air,T_surf=288,R_p_earth=1,M_
     '''
     calculate ratio of S in atmosphere (SO2) to
     S in ocean (SO2(aq), HSO3-, SO3--)
-    assuming ocean in equilbrium with atmosphere from Henry's Law,
+    assuming ocean in equilibrium with atmosphere from Henry's Law,
     assuming saturation of S(IV)
 
     inputs:
@@ -298,7 +298,7 @@ def calc_N_SIV(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
     inputs:
         * tau [] - critical optical depth for observable haze layer
         * r [m] - average radius of H2SO4-H2O aerosol
-        * Qe [] - extinction effeciency of H2SO4-H2O aerosol from Mie theory
+        * Qe [] - extinction efficiency of H2SO4-H2O aerosol from Mie theory
         * T_surf [K] - surface temperature
         * T_strat [K] - temperature of the (isothermal) stratosphere
         * p_surf [Pa] - surface atmosphere pressure
@@ -306,14 +306,14 @@ def calc_N_SIV(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
         * M_p_earth [M_earth] - mass of planet in Earth masses
         * num_earth_oceans [mass_earth_ocean] - mass of ocean water in Earth oceans
         * pH [log10(mol/kg)] - pH of ocean water
-        * w [kg/kg] - weight percentange H2SO4 of H2SO4-H2O aerosol
+        * w [kg/kg] - weight percentage H2SO4 of H2SO4-H2O aerosol
         * t_mix [s] - time for mixing between stratosphere and troposphere
         * alpha [] - fSO2(surface)/fSO2(tropopause), change in mixing ratio
                of SO2 between surface and stratosphere
         * RH_h2o_surf [] - relative humidity of water at the surface
         * mu_atm [mol/kg] - average molar mass of atmosphere
         * c_p_atm [] - specific heat at constant pressure of atmosphere
-    outout:
+    output:
         * [# atoms] critical atoms of S in ocean-atmosphere for an observable haze layer
     '''
     # density of aerosol particle
@@ -534,7 +534,7 @@ def calc_uSO2_boundary(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
     inputs:
         * tau [] - critical optical depth for observable haze layer
         * r [m] - average radius of H2SO4-H2O aerosol
-        * Qe [] - extinction effeciency of H2SO4-H2O aerosol from Mie theory
+        * Qe [] - extinction efficiency of H2SO4-H2O aerosol from Mie theory
         * T_surf [K] - surface temperature
         * T_strat [K] - temperature of the (isothermal) stratosphere
         * p_surf [Pa] - surface atmosphere pressure
@@ -542,7 +542,7 @@ def calc_uSO2_boundary(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
         * M_p_earth [M_earth] - mass of planet in Earth masses
         * num_earth_oceans [mass_earth_ocean] - mass of ocean water in Earth oceans
         * pH [log10(mol/kg)] - pH of ocean water
-        * w [kg/kg] - weight percentange H2SO4 of H2SO4-H2O aerosol
+        * w [kg/kg] - weight percentage H2SO4 of H2SO4-H2O aerosol
         * t_mix [s] - time for mixing between stratosphere and troposphere
         * alpha [] - fSO2(surface)/fSO2(tropopause), change in mixing ratio
                of SO2 between surface and stratosphere

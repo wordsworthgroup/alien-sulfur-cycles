@@ -95,7 +95,7 @@ def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 def Rayleigh(x,m_r):
 	return (8*x**4./3.)*(m_r**2 - 1)**2/(m_r**2 + 2)**2
 
-# approx scattering effeciency in no absorbtion regime (m_i=0)
+# approx scattering efficiency in no absorption regime (m_i=0)
 def vandehulst_approx(x,m_r):
 	rho = 2*x*(m_r-1)
 	return 2 - 4.*np.sin(rho)/rho + 4./rho**2*(1-np.cos(rho))

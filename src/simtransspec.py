@@ -32,7 +32,7 @@ def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
     '''
     create the profile of H2SO4-H2O aerosols
     H2SO4-H2O aerosol number density at each pressure layer
-    assumes number density of H2SO4-H2O aerosol decays exoponentially
+    assumes number density of H2SO4-H2O aerosol decays exponentially
     from peak at tropopause
     inputs:
         * pH2SO4 [Pa] - partial pressure of H2SO4 profile
@@ -156,12 +156,12 @@ def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
     profile[:,1] = list(map(lambda x: atm_pro.tp_pro(x,p_transition_moist,p_strat,p_surf,T_surf,T_strat,tp_pro_moist),profile[:,0]))
     # pH2O
     profile[:,2] = list(map(lambda x: atm_pro.h2o_pro(x,p_transition_moist,p_strat,f_h2o_surf,f_h2o_strat,tp_pro_moist),profile[:,0]))
-    # p non condesning
+    # p non condensing
     p_nonh2o = (profile[:,0] - profile[:,2])
 
     # calculate
     if r_h2so4h2o!=0:
-        # calculate extinction effeciency of H2SO4-H2O aerosols to
+        # calculate extinction efficiency of H2SO4-H2O aerosols to
         # calculate proper optical depth
         f_so2_dry, f_h2so4_dry = sulfur.crit_S(r_h2so4h2o, tau, T_surf, T_strat,
                                                p_strat, w=w,t_mix=s_in_yr,

@@ -15,14 +15,14 @@ def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     # col 0 - wavelength [nm]
     # col 1 - photon flux per wavelength [photons/s/cm^2/nm]
 
-    # import absorbtion spectrum data for various molecules
+    # import absorption spectrum data for various molecules
     asSO2 = np.genfromtxt('./data/abs_x/axsSO2.dat')
     asSO2_2 = np.genfromtxt('./data/abs_x/axsSO2_2.dat')
     asCO2 = np.genfromtxt('./data/abs_x/axsCO2.dat')
     asO2 = np.genfromtxt('./data/abs_x/axsO2.dat')
     asH2O = np.genfromtxt('./data/abs_x/axsH2O.dat')
 
-    # combine sources of absorbtion spectrums as needed and interpolate to
+    # combine sources of absorption spectrums as needed and interpolate to
     # match 1 nm spaced solar spectrum
     SO2 = np.concatenate((np.array([[0,0]]),asSO2_2,asSO2))
     f_as_SO2 = interp1d(SO2[:,0],SO2[:,1])
@@ -74,7 +74,7 @@ def plot_cross_section(spectrum_photo,cross_w_SO2,cross_max,is_SO2=True,lambda_m
     plt.yscale('log')
     plt.ylim(1e-23,1e-15)
     plt.xlabel(r'$\lambda$ [nm]')
-    plt.ylabel(r'absorbtion cross section [cm$^2$/molecule]')
+    plt.ylabel(r'absorption cross section [cm$^2$/molecule]')
     if is_SO2:
         plt.savefig('figs_sup/abs_x_w_SO2.pdf',bbox_inches='tight',transparent=True)
     else:
