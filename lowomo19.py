@@ -1,6 +1,7 @@
 ################################################################
 # results & plots of Loftus, Wordsworth, & Morley, 2019
 # (aka LoWoMo19)
+#
 # code by Kaitlyn Loftus (2019)
 #
 # this script will generate all results for reproducing

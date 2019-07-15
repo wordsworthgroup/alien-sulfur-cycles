@@ -1,5 +1,5 @@
 # Alien Sulfur Cycles
-Code by Kaitlyn Loftus associated with “Sulfate Aerosol Hazes and SO2 Gas as Constraints on Rocky Exoplanets' Surface Liquid Water” by Loftus, Wordsworth, &amp; Morley (2019), in prep. (Henceforth, LoWoMo19.)
+Code associated with “Sulfate Aerosol Hazes and SO2 Gas as Constraints on Rocky Exoplanets' Surface Liquid Water” by Loftus, Wordsworth, &amp; Morley (2019), in prep. (Henceforth, LoWoMo19.)
 
 ### Logistics
 The code is written in Python 3.

@@ -1,14 +1,25 @@
 import numpy as np
 import scipy.special as ss
 
-# adapted from Matlab code by C. Maetzler, June 2002
-# http://arrc.ou.edu/~rockee/NRA_2007_website/Mie-scattering-Matlab.pdf
-# and from Robin Wordsworth for EPS237 Planetary Radiation and Climate
+################################################################
+# Mie theory calculations of scattering and extinction efficiencies
+# for homogeneous spherical particles
+# adapted from Matlab code by Robin Wordsworth for EPS237 Planetary Radiation and Climate
+# which was adapted from Matlab code by C. Maetzler, June 2002
+# http://www.atmo.arizona.edu/students/courselinks/spring08/atmo336s1/courses/spring09/atmo656b/maetzler_mie_v2.pdf
+################################################################
 
-# from complex index of refraction (m = m_r + i*m_i), size parameter
-# (x = 2*pi*a*m_medium/lambda), and number of terms in expansion (nmax),
-# calculate the associated Mie coefficients an, bn
 def mie_coeff(m, x, nmax):
+	'''
+	calculate Mie coefficients a_n, b_n
+	inputs:
+		* m [complex] - index of refraction
+		* x [] - size parameter, x = 2*pi*r*m_medium/lambda
+		* nmax [] - number of terms in expansion
+	outputs:
+		* an [] - Mie coefficients
+		* bn [] - Mie coefficients
+	'''
 
 	#create n array
 	n = np.arange(1,nmax+1)
@@ -42,12 +53,38 @@ def mie_coeff(m, x, nmax):
 
 	return an, bn
 
-#calculate Mie scattering efficiency vs. size parameter
 def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
+	'''
+	calculate Mie scattering and absorption efficiencies vs. size parameter
+	inputs:
+		* m_r [] - real component of index of refraction
+		* m_i [] - imaginary component of index of refraction
+		* x0 [] - optional, for scattering efficiencies for one size parameter x0
+		* xparams [] - optional, used to calculated size parameters
+		if want to vary particle radius or wavelength of indicident light;
+		varying radius:
+			xparams[0] - particle radius [length unit, same as wavelengths below]
+			xparams[1] - index of refraction of particle []
+			xparams[2] -  indicident wavelength minumum [length unit, same as radius above]
+			xparams[3] - indicident wavelength maximum  [length unit, same as radius above]
+		varying wavelength:
+			xparams[0] - minimum particle radius [length unit, same as wavelength below]
+			xparams[1] - maximum particle radius [length unit, same as wavelength below]
+			xparams[2] -  index of refraction of particle []
+			xparams[3] - indicident wavelength  [length unit, same as radii above]
+		* vary_lambda [boolean] - is lambda varied in x? used to distinguish how xparams is used
+		* nmax [int] - number of terms in polynomial expansion
+		* nx [int] - number of size parameters to calculate efficiencies for
+	outputs:
+		* x [] - size parameter
+		* Qs []  - scattering efficiency
+		* Qe [] - extinction efficiency
+	'''
 	# control x manually
 	if x0!=None:
 		x = np.array([x0])
 		nx = 1
+	# control x from xparams, varying lambda, constant particle radius
 	elif xparams!=None and vary_lambda:
 		a = xparams[0]
 		m_medium = xparams[1]
@@ -55,9 +92,9 @@ def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 		lambda_max = xparams[3]
 		x_min = 2*np.pi*a*m_medium/lambda_max
 		x_max = 2*np.pi*a*m_medium/lambda_min
-
 		# size parameter array
 		x  = np.logspace(np.log10(x_min),np.log10(x_max),nx)
+	# control x from xparams, varying particle radius, constant lambda
 	elif xparams!=None:
 		a_min = xparams[0]
 		a_max = xparams[1]
@@ -85,17 +122,18 @@ def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 		# scattering and extinction efficiencies
 		Qs[i] = np.sum((2*n+1)*(abs(a)**2 + abs(b)**2))
 		Qe[i] = np.sum((2*n+1)*(a + b).real)
-
 	Qs = (2/x**2)*Qs
 	Qe = (2/x**2)*Qe
 
 	return x, Qs, Qe
 
-# Rayleigh scattering
 def Rayleigh(x,m_r):
+	'''
+	calculate Rayeleigh scattering
+	inputs:
+		* x [] - size parameter
+		* m_r [] - real component of index of refraction
+	output:
+		* [] - scattering efficiency
+	'''
 	return (8*x**4./3.)*(m_r**2 - 1)**2/(m_r**2 + 2)**2
-
-# approx scattering efficiency in no absorption regime (m_i=0)
-def vandehulst_approx(x,m_r):
-	rho = 2*x*(m_r-1)
-	return 2 - 4.*np.sin(rho)/rho + 4./rho**2*(1-np.cos(rho))

@@ -1,3 +1,7 @@
+################################################################
+# set up inputs for simulated transit spectra
+################################################################
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -25,7 +29,7 @@ eta_air = 1.6e-5 #[Pa/s]
 mu_air = 0.02896 #[kg/mol]
 c_p_air=1.003*1000 #[J/kg/K]
 R_air = 287.058 #J/kg/K
-ep = mu_h2o/mu_air
+ep = mu_h2o/mu_air # []
 g_earth = 9.81 # [m/s2]
 
 def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
@@ -232,8 +236,5 @@ def calc_avg_spec(fname,n_chunks=500):
                         break
 
             avg_spec[j-1] = np.mean(spec_avger)
-            # if np.isnan(avg_spec[j-1]):
-            #     print('nan!')
-            #     print(avg_wvlngth[j-1])
     avg_wvlngth = avg_wvlngth[:-1]
     return avg_wvlngth, avg_spec*1e6
