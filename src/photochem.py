@@ -90,10 +90,3 @@ def plot_SO2_tau(spectrum_photo,cross_w_SO2,u_SO2=5E+13):
     plt.yscale('log')
     plt.savefig('figs_sup/tau_SO2.pdf',bbox_inches='tight',transparent=True)
     plt.close()
-
-# cross_w_SO2, cross_max, spectrum_photo= set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91)
-# photon_flux = integrate.simps(cross_max*spectrum_photo[:,1],spectrum_photo[:,0],even='last') #[photons/s/cm2]
-# print(photon_flux)
-# plot_stellar_spectrum(spectrum_photo)
-# plot_cross_section(spectrum_photo,cross_w_SO2,cross_max)
-# plot_SO2_tau(cross_w_SO2)

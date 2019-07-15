@@ -528,7 +528,7 @@ def calc_uSO2_boundary(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
     calculate critical total molecules of S
     in atmosphere-ocean for an observable haze layer
     follows eqs X-Y in LWM19
-    assume lower atmosphere (troposphere) follows an adiabat (dry or moist as implied by f_h2o)
+    assume lower atmosphere (troposphere) follows an adiabat (dry or moist as implied by RH_h2o_surf)
     assume upper atmosphere (stratosphere) is isothermal
     INPUTS
     inputs:
@@ -550,7 +550,7 @@ def calc_uSO2_boundary(tau, r, T_surf, T_strat, p_surf, R_p_earth, M_p_earth,
         * mu_atm [mol/kg] - average molar mass of atmosphere
         * c_p_atm [] - specific heat at constant pressure of atmosphere
     outout:
-        * [# atoms] critical atoms of S in ocean-atmosphere for an observable haze layer
+        * u_so2_boundary - [molecules/cm2] critical atoms of S in ocean-atmosphere for an observable haze layer
     '''
     # density of aerosol particle
     rho_p = calc_rho_p(w) # [kg/m3]

@@ -1,6 +1,10 @@
 ################################################################
 # results & plots of Loftus, Wordsworth, & Morley, 2019
-# Kaitlyn Loftus (2019)
+# (aka LoWoMo19)
+# code by Kaitlyn Loftus (2019)
+#
+# this script will generate all results for reproducing
+# LoWoMo19, either via print output or figures
 ################################################################
 
 import numpy as np
@@ -51,7 +55,7 @@ mu_h2o = 0.018015 #[kg/mol]
 rho_h2o = 1000 #[kg/m3]
 
 # color scheme where 3 colors are necessary
-colors3 = ['#9e9e9e','#135b1b','#0D19B6']
+colors3 = ['#002fa7','deepskyblue','#C1DBE6']
 
 print('\nRESULTS FROM LOFTUS, WORDSWORTH, & MORLEY (2019)')
 print('figures in paper saved in directory ./figs')
@@ -60,11 +64,11 @@ print('inputs for transit spectra saved in directory ./spec_inputs')
 
 ################################################################
 # MIE SCATTERING
-# Figure 2 & discussion in Section 3.2
+# Figure 2 & methods in Section 3.2
 ################################################################
 
-print('\n------------------------------------\n'
-      +'MIE SCATTERING\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'MIE SCATTERING\n-----------------------------------------------')
 
 print('creating Figure 2')
 # calculate scattering and extinction efficiencies for Sun-like and M-dwarf light
@@ -80,27 +84,32 @@ m_i_G = 0.
 m_r_M = 1.422
 m_i_M = 1.53e-6
 
+# particle radii of interest
 r_min = 0.01 #[um]
 r_max = 10 #[um]
 r = np.logspace(r_min,r_max,500)
 
+# calculate Mie size parameter (x_*), scattering efficiency (Qs_*),
+# and extinction efficiency (Qe_*)
 x_sol, Qs_sol, Qe_sol = mie.mie_scatter(m_r_G, m_i_G,
                                         xparams=[r_min,r_max,m_medium,lambda_sol],
                                         vary_lambda=False)
 x_M, Qs_M, Qe_M = mie.mie_scatter(m_r_M, m_i_M,
                                   xparams=[r_min,r_max,m_medium,lambda_sol],
                                   vary_lambda=False)
+# calculate Rayleigh scattering for same size parameters
 Qe_sol_ray = mie.Rayleigh(x_sol,m_r_G)
 Qe_M_ray = mie.Rayleigh(x_M,m_r_M)
+# translate size parameters back to radii
 r_sol = x_sol/2./np.pi*lambda_sol
 r_M = x_M/2./np.pi*lambda_M
 
 # FIGURE 2
 # extinction efficiency vs particle radius
-plt.plot(r_sol,Qe_sol,c='k',label='Mie, Sun-like')
-plt.plot(r_M,Qe_M,c='r',label='Mie, M-dwarf')
-plt.plot(r_sol,Qe_sol_ray,c='k',ls='--',label='Rayleigh, Sun-like')
-plt.plot(r_M,Qe_M_ray,c='r',ls='--',label='Rayleigh, M-dwarf')
+plt.plot(r_sol,Qe_sol,c=colors3[0],label='Mie, Sun-like')
+plt.plot(r_M,Qe_M,c=colors3[2],label='Mie, M-dwarf')
+plt.plot(r_sol,Qe_sol_ray,c=colors3[0],ls='--',label='Rayleigh, Sun-like')
+plt.plot(r_M,Qe_M_ray,c=colors3[2],ls='--',label='Rayleigh, M-dwarf')
 plt.xlabel(r'r [$\mu$m]')
 plt.xscale('log')
 plt.xlim(5e-2,4)
@@ -128,37 +137,46 @@ print(t)
 
 ################################################################
 # LIMITING PHOTOCHEMICAL TIMESCALE
-# discussion in Section 3.4
+# methods in Section 3.4
 ################################################################
 
-print('\n------------------------------------\n'
-      +'LIMITING PHOTOCHEMICAL TIMESCALE\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'LIMITING PHOTOCHEMICAL TIMESCALE\n-----------------------------------------------')
 
 # calculate limiting timescale for SO2 to H2SO4 conversion
 # for a G star and M star
 
+# set up photochemical calculation by getting stellar spectrum and
+# absorption cross sections for H2O, O2, CO2, and SO2
+# G star
 cross_w_SO2, cross_max, spectrum_photo_G = pc.set_up_photochem()
+# M star -- adjust solar spectrum by multiplying XUV flux by 10x
+# and UV flux by 0.1x
 spectrum_photo_M = pc.set_up_photochem(f_XUV=10.,f_UV=0.1)[2]
+# calculate conversion timescale from (13) using Simpson's rule
 t_G = (0.5*integrate.simps(cross_max*spectrum_photo_G[:,1],spectrum_photo_G[:,0],even='last'))**(-1) #[s]
 t_M = (0.5*integrate.simps(cross_max*spectrum_photo_M[:,1],spectrum_photo_M[:,0],even='last'))**(-1) #[s]
 
-# print results of limiting timescales without SO2
+# print results of limiting timescales (without SO2 photodissociation)
 t = PrettyTable(['star','t [s]', 't [days]'])
 t.add_row(['G','%1.F'%t_G,'%1.2F'%(t_G/3600./24.)])
 t.add_row(['M','%1.F'%t_M,'%1.2F'%(t_M/3600./24.)])
 print(t)
 
 # create additional figures of interest to photochemical calculation
+# plot assumed G star spectrum
 print('\ncreating Supplemental Figure stellar_spec_G')
 print('to show assumed stellar spectrum for a G star')
 pc.plot_stellar_spectrum(spectrum_photo_G)
 print('Supplemental Figure stellar_spec_G saved\n')
 
+# plot assumed M star spectrum
 print('creating Supplemental Figure stellar_spec_M')
 print('to show assumed stellar spectrum for a M star')
 pc.plot_stellar_spectrum(spectrum_photo_M,fig_name='stellar_spec_M')
 print('Supplemental Figure stellar_spec_M saved\n')
 
+# plot absorbtion cross sections with and without SO2
 print('creating Supplemental Figures abs_x_*')
 print('to show absorption cross sections for different molecules of interest')
 pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max)
@@ -169,28 +187,29 @@ print('Supplemental Figures abs_x_* saved\n')
 # the absorption cross section
 print('creating Supplemental Figure tau_SO2')
 print('to establish SO2 is not optically thick')
-u_SO2 = sulfur.calc_uSO2_boundary(0.1,1e-6,288,200,1.01325e5,1,1,t_convert=max(t_G,t_M))
+# calculate SO2 mass column
+# (upper estimate of min SO2 given lowering photochemical conversion timescale will drive down u_SO2)
+u_SO2 = sulfur.calc_uSO2_boundary(0.1,1e-6,288,200,1.01325e5,1,1,t_convert=max(t_G,t_M)) # [molecules/cm2]
+# plot SO2 opacity given this mass column
 pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2,u_SO2)
 print('Supplemental Figure tau_SO2 saved')
 
 
 ################################################################
 # SIMULATED TRANSMISSION SPECTRA
-# Figure 3 & discussion in Section 3.6 & results in Section 4.1
+# Figure 3 & methods in Section 3.6 & results in Section 4.1
+# & discussion in 5.3
 # also inputs that generate simulated transmission spectra
 ################################################################
-print('\n------------------------------------\n'
-      +'SIMULATED TRANSMISSION SPECTRA\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'SIMULATED TRANSMISSION SPECTRA\n-----------------------------------------------')
 # create inputs for transmission spectra
 print('creating inputs for transmission spectra')
+# vary vertical tau by orders of magnitude
 taus = np.logspace(-4,1,6)
 for tau in taus:
     sts.input_pro(1.01325e5,288,200,0.01,1000,tau,1.e-6,0,False)
-    print('input for tau_h2so4 = %1.1F, r_h2so4 = 1 um saved'%tau)
-rs = np.linspace(1,10,10)*1.e-7
-for r in rs:
-    sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,r,0,False)
-    print('input for tau_h2so4 = 0.1, r_h2so4 = %1.1F um saved'%(r*1e6))
+    print('input for tau_h2so4 = %1.1E, r_h2so4 = 1 um saved'%tau)
 #clear
 sts.input_pro(1.01325e5,288,200,0.1,1000,0.1,0,0,False)
 print('input for clear sky saved')
@@ -236,43 +255,7 @@ plt.close()
 
 print('Figure 3 saved')
 
-print('\ncreating Supplemental Figure smallest_r')
-print('to test smallest aerosol particle radius at which Mie vs Rayleigh scattering is distinguishable')
-
-# plot spectra of various H2SO4-H2O aerosol radii considered for tau = 0.1
-# set up color scheme for plot
-n = 11
-new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
-plt.rc('axes', prop_cycle=cycler('color', new_colors))
-
-# plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
-for i in range(1,10):
-    f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_'+str(i)+'e-07_r_water_0e+00.txt'
-    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 0.'+str(i)+r' $\mu$m')
-
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
-avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 1 $\mu$m')
-# plot logistics
-plt.xscale('log')
-plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
-plt.xlabel(r'wavelength [$\mu$m]')
-plt.ylabel('transit depth [ppm]')
-plt.xlim(0.3,50)
-plt.tick_params(axis='both', which='major')
-# order legend labels to match plot order
-handles, labels = plt.gca().get_legend_handles_labels()
-plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
-
-
-plt.savefig('figs_sup/smallest_r.pdf',bbox_inches='tight',transparent=True)
-plt.close()
-print('Supplemental Figure smallest_r saved\n')
-
+# plot transmission spectra with H2SO4-H2O aerosols vs different water clouds
 print('creating Supplemental Figure other_scatters')
 print('to test spectra distinguishable when high & low water clouds are present vs H2SO4-H2O aerosols')
 
@@ -318,11 +301,11 @@ print('Supplemental Figure other_scatters saved')
 
 ################################################################
 # AQUEOUS S(IV) CHEMISTRY
-# Figures 5-6 & results in Section 4.3
+# Figures 5-6 & methods in Section 3.7 & results in Section 4.3
 ################################################################
 
-print('\n------------------------------------\n'
-      +'AQUEOUS S(IV) CHEMISTRY\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'AQUEOUS S(IV) CHEMISTRY\n-----------------------------------------------')
 
 # FIGURE 5
 # plot distribution of S(IV) among SO2(aq), HSO3-, SO3-- vs pH
@@ -330,9 +313,9 @@ print('\n------------------------------------\n'
 print('creating Figure 5')
 pHs = np.linspace(1,14,100)
 frac_so2, frac_hso3, frac_so3 = sulfur.S_aq_fractions(pHs,T_earth)
-plt.plot(pHs,frac_so2, lw=3, label=r'SO$_2$(aq)', c=colors3[0])
-plt.plot(pHs, frac_hso3, lw=1, label=r'HSO$_3^-$',c=colors3[1])
-plt.plot(pHs,frac_so3, lw=1, label=r'SO$_3^{2-}$', c=colors3[2])
+plt.plot(pHs,frac_so2, lw=3.5, label=r'SO$_2$(aq)', c=colors3[0])
+plt.plot(pHs, frac_hso3, lw=2, label=r'HSO$_3^-$',c=colors3[1])
+plt.plot(pHs,frac_so3, lw=2, label=r'SO$_3^{2-}$', c=colors3[2])
 plt.legend(loc = 4)
 plt.xlabel('pH')
 plt.xlim(1,14)
@@ -351,7 +334,7 @@ print('creating Figure 6')
 for i,m_oc in enumerate([0.001,1,1000]):
     f = sulfur.S_atm_ocean_frac(pHs,m_oc)
     plt.plot(pHs,f,label=r'M$_\mathrm{ocean}$ = '+str(m_oc)+
-             r'M$_{\bigoplus \mathrm{ocean}}$',c=colors3[i])
+             r'M$_{\bigoplus \mathrm{ocean}}$',c=colors3[2-i])
 plt.xlabel('pH')
 plt.xlim(1,14)
 plt.ylabel('Atmosphere S / Ocean S')
@@ -384,13 +367,13 @@ print('atmosphere S / ocean S = %1.3E'%sulfur.S_atm_ocean_frac(pH_earth,1))
 # SULFUR IN THE ATMOSPHERE
 # Figure 4 & results in Section 4.2
 ################################################################
-print('\n------------------------------------\n'
-      +'ATMOSPHERIC SULFUR\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'ATMOSPHERIC SULFUR\n-----------------------------------------------')
 
 # *_b => best estimate scenario
 # *_lim => physically limiting scenario
 
-# set up base-line Earth based values
+# set up baseline Earth-based values
 n = 50
 mu_atm = 0.02896 #[kg/mole], air
 R_p_earth = 1 # [radii Earth]
@@ -474,8 +457,8 @@ N_S_base0 = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
                             R_p_earth, M_p_earth, w, t_mix,
                             t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
 N_S_base1 = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
-axarr[0,0].plot(T_surfs,N_S_T_surfs[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[0,0].plot(T_surfs,N_S_T_surfs[:,1]/N_S_base1,c='b',label='gas')
+axarr[0,0].plot(T_surfs,N_S_T_surfs[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[0,0].plot(T_surfs,N_S_T_surfs[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[0,0].axvline(T_surf,ls='--',c='0.8')
 
 axarr[0,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
@@ -491,8 +474,8 @@ for i,T in enumerate(T_strats):
                                 R_p_earth, M_p_earth, w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
     N_S_T_strats[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
-axarr[1,0].plot(T_strats,N_S_T_strats[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[1,0].plot(T_strats,N_S_T_strats[:,1]/N_S_base1,c='b',label='gas')
+axarr[1,0].plot(T_strats,N_S_T_strats[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[1,0].plot(T_strats,N_S_T_strats[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[1,0].axvline(T_strat,ls='--',c='0.8')
 axarr[1,0].set_xlabel(r'$T_\mathrm{strat}$ [K]')
 
@@ -506,8 +489,8 @@ for i,p in enumerate(p_surfs):
                                 R_p_earth, M_p_earth, w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
     N_S_p_surfs[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
-axarr[0,1].plot(p_surfs,N_S_p_surfs[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[0,1].plot(p_surfs,N_S_p_surfs[:,1]/N_S_base1,c='b',label='gas')
+axarr[0,1].plot(p_surfs,N_S_p_surfs[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[0,1].plot(p_surfs,N_S_p_surfs[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[0,1].axvline(p_surf,ls='--',c='0.8')
 axarr[0,1].set_xscale('log')
 
@@ -524,8 +507,8 @@ for i,R in enumerate(R_ps):
                                 R, M_ps[i], w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]/M_ps[i]
     N_S_size[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R,M_ps[i],f_n2,f_o2,f_co2)[0]/M_ps[i]
-axarr[2,0].plot(R_ps,N_S_size[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[2,0].plot(R_ps,N_S_size[:,1]/N_S_base1,c='b',label='gas')
+axarr[2,0].plot(R_ps,N_S_size[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[2,0].plot(R_ps,N_S_size[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[2,0].axvline(1,ls='--',c='0.8')
 
 # ATMOSPHERIC COMPOSITION
@@ -541,11 +524,12 @@ for i,x in enumerate(percent_x):
                                 R_p_earth, M_p_earth, w, t_mix,
                                 t_convert_b, alpha_b,RH_h2o_surf_b,1-x,0,x,is_G)[0]
     N_S_mus[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,1-x,0,x)[0]
-axarr[1,1].plot(mus*1e3,N_S_mus[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[1,1].plot(mus*1e3,N_S_mus[:,1]/N_S_base1,c='b',label='gas')
+axarr[1,1].plot(mus*1e3,N_S_mus[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[1,1].plot(mus*1e3,N_S_mus[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[1,1].axvline(mu_air*1e3,ls='--',c='0.8')
 
 # WATER CONTENT
+# vary RH at surface
 axarr[2,1].set_title(r'$\mathrm{RH}_{\mathrm{surf}}$')
 axarr[2,1].set_xlabel(r'$\mathrm{RH}_{\mathrm{surf}}$')
 RH_h2o_surfs = np.logspace(-5,0,n)
@@ -557,8 +541,8 @@ for i,RH in enumerate(RH_h2o_surfs):
     N_S_f_h2os[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
 f_h2o_surfs = RH_h2o_surfs*atm_pro.p_h2osat(T_surf)/p_surf # []
 f_h2o_surf_b = RH_h2o_surf_b*atm_pro.p_h2osat(T_surf)/p_surf # []
-axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='0.5',label='aerosol')
-axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='b',label='gas')
+axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
+axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[2,1].axvline(f_h2o_surf_b,ls='--',c='0.8',label='Earth value')
 axarr[2,1].set_xscale('log')
 
@@ -567,7 +551,7 @@ plt.ylim(1e-2,1e2)
 plt.yscale('log')
 for i in range(3):
     for j in range(2):
-        axarr[i,j].axhspan(0.01,0.1,color='r',alpha=0.8,label='< 10% ' r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
+        axarr[i,j].axhspan(0.01,0.1,color='r',alpha=0.85,label='< 10% ' r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 
 fig.subplots_adjust(hspace=0.5,wspace=0.05)
 handles, labels = axarr[2,1].get_legend_handles_labels()
@@ -582,8 +566,8 @@ print('Figure 4 saved')
 # Figures 7-10 & results in Section 4.4
 ################################################################
 
-print('\n------------------------------------\n'
-      +'SULFUR OBSERVABILITY GIVEN OCEAN PARAMETERS\n------------------------------------')
+print('\n-----------------------------------------------\n'
+      +'SULFUR OBSERVABILITY GIVEN OCEAN PARAMETERS\n-----------------------------------------------')
 
 # various ocean parameters
 pH = np.linspace(1,14,n)
@@ -638,6 +622,7 @@ colors = [oranges(norm_orange(-2)),oranges(norm_orange(-1)),
 
 # have option to show where t_SIV = 0.1 and pH = 6 is
 is_show_maxoc = False
+
 # FIGURE 10
 # plot limiting case for aerosols
 f, (ax1, ax2) = plt.subplots(1,2,sharey=True,figsize=(12,4.5))
@@ -667,6 +652,7 @@ oc_aero_lG = 4e-3 # [Earth oc]
 h_aero_lM = oc_aero_lM*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 h_aero_lG = oc_aero_lG*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 
+# highlight on plot where max oc is
 if is_show_maxoc:
     ax1.axhline(oc_aero_lM)
     ax2.axhline(oc_aero_lG)
@@ -704,7 +690,6 @@ ax2.annotate('observable \n' r'H$_2$SO$_4$-H$_2$O' '\nhaze'
              color='k')
 
 
-
 plt.savefig('figs/fig10.pdf',bbox_inches='tight',transparent=True)
 plt.close()
 
@@ -719,7 +704,7 @@ cs1_.set_label(r'$\log_{10}$($\tau_\mathrm{S(IV)}^\ast$ [yr])')
 plt.xlabel('pH')
 plt.ylabel(r'# Earth oceans [$M_{\oplus\mathrm{ocean}}$]')
 plt.yscale('log')
-#don't make negative-valued contours dashed
+# don't make negative-valued contours dashed
 matplotlib.rcParams['contour.negative_linestyle'] = 'solid'
 # contour for reasonable t_SIV
 plt.contour(pHgrid_ex, ocgrid_ex, np.log10(t_SIV_b),levels=[likely],linewidths=3,colors='w')
@@ -734,11 +719,11 @@ ax1.add_patch(interesting_oc3)
 plt.scatter(8.14,1,color='k',s=10,zorder=10)
 plt.annotate('modern Earth ocean', (8.3,0.4))
 
-
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
 oc_aero_b = 2.5e-8 #[Earth oc]
 h_aero_b = oc_aero_b*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 
+# highlight on plot where max oc is
 if is_show_maxoc:
     ax1.axhline(oc_aero_b)
     ax1.axvline(6)
@@ -796,6 +781,7 @@ ax2.contour(pHgrid_ex2, hgrid_ex2, np.log10(t_SIV_gas),levels=[likely],linewidth
 oc_gas_b = 1e-9 # [Earth oc]
 h_gas_b = oc_gas_b*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 
+# highlight on plot where max oc is
 if is_show_maxoc:
     ax1.axhline(oc_gas_b)
     ax1.axvline(6)
@@ -843,6 +829,7 @@ ax2.contour(pHgrid_ex0, hgrid_ex0, np.log10(t_SIV_gas_lim),levels=[likely],linew
 oc_gas_l = 2e-5 # [Earth oc]
 h_gas_l = oc_gas_l*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 
+# highlight on plot where max oc is
 if is_show_maxoc:
     ax1.axhline(oc_gas_l)
     ax1.axvline(6)
