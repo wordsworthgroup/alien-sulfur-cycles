@@ -22,7 +22,10 @@ import src.sulfur as sulfur
 import src.mie as mie
 import src.simtransspec as sts
 import src.photochem as pc
+from src.planet import Planet
 from cycler import cycler
+from copy import deepcopy
+import src.h2o as h2o
 
 ################################################################
 # SETUP
@@ -58,6 +61,28 @@ rho_h2o = 1000 #[kg/m3]
 # color scheme where 3 colors are necessary
 colors3 = ['#002fa7','deepskyblue','#C1DBE6']
 
+# set up dry and (wet) Earths
+# dry atm composition
+# [H2, He, N2, O2, CO2]
+f_o2 = 0.2095 # [vmr] O2
+f_co2 = 400.e-6 # [vmr] #CO2
+# to ensure atm components add up to 1
+f_n2 = 1. - f_o2 - f_co2 # [vmr] N2
+X = np.array([0.,0.,f_n2,f_o2,f_co2])
+T_strat = 200 # [K]
+p_surf_earth = 1.01325e5 # [Pa]
+RH_earth = 0.77 # []
+Earth = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
+Earth_dry = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
+Earth_atm = atm_pro.Atm(Earth,RH_earth)
+# integrate to get atmospheric profile
+Earth_atm.set_up_atm_pro()
+Earth_atm_dry = atm_pro.Atm(Earth_dry,0.)
+# integrate to get atmospheric profile
+Earth_atm_dry.set_up_atm_pro()
+
+
+
 print('\nRESULTS FROM LOFTUS, WORDSWORTH, & MORLEY (2019)')
 print('figures in paper saved in directory ./figs')
 print('additional figures saved in directory ./figs_sup')
@@ -80,10 +105,8 @@ lambda_M = 1. #[um] wavelength for a M-dwarf
 # index of refraction of H2SO4-H2O for w=75%
 # source:
 # https://www.cfa.harvard.edu/HITRAN/HITRAN2012/Aerosols/ascii/single_files/palmer_williams_h2so4.dat
-m_r_G = 1.4315
-m_i_G = 0.
-m_r_M = 1.422
-m_i_M = 1.53e-6
+m_G = complex(1.4315,0.)
+m_M = complex(1.422,1.53e-6)
 
 # particle radii of interest
 r_min = 0.01 #[um]
@@ -92,15 +115,15 @@ r = np.logspace(r_min,r_max,500)
 
 # calculate Mie size parameter (x_*), scattering efficiency (Qs_*),
 # and extinction efficiency (Qe_*)
-x_sol, Qs_sol, Qe_sol = mie.mie_scatter(m_r_G, m_i_G,
+x_sol, Qs_sol, Qe_sol = mie.mie_scatter(m_G,
                                         xparams=[r_min,r_max,m_medium,lambda_sol],
                                         vary_lambda=False)
-x_M, Qs_M, Qe_M = mie.mie_scatter(m_r_M, m_i_M,
+x_M, Qs_M, Qe_M = mie.mie_scatter(m_M,
                                   xparams=[r_min,r_max,m_medium,lambda_sol],
                                   vary_lambda=False)
 # calculate Rayleigh scattering for same size parameters
-Qe_sol_ray = mie.Rayleigh(x_sol,m_r_G)
-Qe_M_ray = mie.Rayleigh(x_M,m_r_M)
+Qe_sol_ray = mie.Rayleigh(x_sol,m_G.real)
+Qe_M_ray = mie.Rayleigh(x_M,m_M.real)
 # translate size parameters back to radii
 r_sol = x_sol/2./np.pi*lambda_sol
 r_M = x_M/2./np.pi*lambda_M
@@ -125,10 +148,10 @@ print('Figure 2 saved')
 # print Qe for particle size of interest for each star
 r_sol_sing = 0.1 # [um]
 r_M_sing = 0.2 # [um]
-Qe_sol_sing = mie.mie_scatter(m_r_G, m_i_G, x0=2.*np.pi*r_sol_sing/lambda_sol)[2]
+Qe_sol_sing = mie.mie_scatter(m_G, x0=2.*np.pi*r_sol_sing/lambda_sol)[2]
 r_sol_sing2 = 1. # [um]
-Qe_sol_sing2 = mie.mie_scatter(m_r_G, m_i_G, x0=2.*np.pi*r_sol_sing2/lambda_sol)[2]
-Qe_M_sing = mie.mie_scatter(m_r_M, m_i_M, x0=2.*np.pi*r_M_sing/lambda_M)[2]
+Qe_sol_sing2 = mie.mie_scatter(m_G, x0=2.*np.pi*r_sol_sing2/lambda_sol)[2]
+Qe_M_sing = mie.mie_scatter(m_M, x0=2.*np.pi*r_M_sing/lambda_M)[2]
 
 t = PrettyTable(['star','lambda [um]','r [um]','Qe []'])
 t.add_row(['G','0.556','1','%1.3F'%Qe_sol_sing2])
@@ -190,7 +213,9 @@ print('creating Supplemental Figure tau_SO2')
 print('to establish SO2 is not optically thick')
 # calculate SO2 mass column
 # (upper estimate of min SO2 given lowering photochemical conversion timescale will drive down u_SO2)
-u_SO2 = sulfur.calc_uSO2_boundary(0.1,1e-6,288,200,1.01325e5,1,1,t_convert=max(t_G,t_M)) # [molecules/cm2]
+photochem_test = sulfur.Sulfur_Cycle(Earth_atm,'aero',t_convert=max(t_G,t_M))
+
+u_SO2 = photochem_test.calc_uSO2_boundary() # [molecules/cm2]
 # plot SO2 opacity given this mass column
 pc.plot_SO2_tau(spectrum_photo_G,cross_w_SO2,u_SO2)
 print('Supplemental Figure tau_SO2 saved')
@@ -209,16 +234,16 @@ print('creating inputs for transmission spectra')
 # vary vertical tau by orders of magnitude
 taus = np.logspace(-4,1,6)
 for tau in taus:
-    sts.input_pro(1.01325e5,288,200,0.01,1000,tau,1.e-6,0,False)
+    sts.input_pro(Earth_atm,1000,tau,1.e-6,0,False)
     print('input for tau_h2so4 = %1.1E, r_h2so4 = 1 um saved'%tau)
 #clear
-sts.input_pro(1.01325e5,288,200,0.1,1000,0.1,0,0,False)
+sts.input_pro(Earth_atm,1000,0.1,0,0,False)
 print('input for clear sky saved')
 # low clouds
-sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,5.e-6,False)
+sts.input_pro(Earth_atm,1000,0.1,0,5.e-6,False)
 print('input for low water clouds saved')
 # high clouds
-sts.input_pro(1.01325e5,288,200,0.01,1000,0.1,0,100e-6,True)
+sts.input_pro(Earth_atm,1000,0.1,0,100e-6,True)
 print('input for high water clouds saved')
 
 # plot transmission spectra with varying tau
@@ -333,7 +358,7 @@ print('Figure 5 saved')
 # ASSUMING S(IV) saturation
 print('creating Figure 6')
 for i,m_oc in enumerate([0.001,1,1000]):
-    f = sulfur.S_atm_ocean_frac(pHs,m_oc)
+    f = sulfur.S_atm_ocean_frac(pHs,m_oc,Earth)
     plt.plot(pHs,f,label=r'M$_\mathrm{ocean}$ = '+str(m_oc)+
              r'M$_{\bigoplus \mathrm{ocean}}$',c=colors3[2-i])
 plt.xlabel('pH')
@@ -361,7 +386,7 @@ print('for modern earth pH = 8.14, fSO2 = 1E-10, & S(IV) saturation:\n'
        + '[SO3--]/[S(IV)] = %1.3F\n'%frac_so3)
 # print ratio of sulfur in atmosphere vs ocean for modern earth pH
 # ASSUMING S(IV) saturation
-print('atmosphere S / ocean S = %1.3E'%sulfur.S_atm_ocean_frac(pH_earth,1))
+print('atmosphere S / ocean S = %1.3E'%sulfur.S_atm_ocean_frac(pH_earth,1,Earth))
 
 
 ################################################################
@@ -376,12 +401,7 @@ print('\n-----------------------------------------------\n'
 
 # set up baseline Earth-based values
 n = 50
-mu_atm = 0.02896 #[kg/mole], air
-R_p_earth = 1 # [radii Earth]
-M_p_earth = 1 # [mass Earth]
-p_surf = 1.01325e5 # [Pa]
-T_surf = 288. # [K]
-T_strat = 200. # [K]
+
 r_b = 1.e-6 # [m]
 r_G_lim = 1.e-7 # [m]
 r_M_lim = 2.e-7 # [m]
@@ -397,44 +417,53 @@ w = 0.75 # [kg/kg]
 t_mix = 1.*s_in_yr # [s]
 n_outgass_lim = 200. # [modern Earth outgassing]
 n_outgass_b = 1. # [modern Earth outgassing]
-# mixing ratios
-f_n2 = 0.7809 # [] N2
-f_o2 = 0.2095 # [] O2
-f_co2 = 400.e-6 # [] #CO2
-# relative humidity at surface
-RH_h2o_surf_b = 0.77 # []
-RH_h2o_surf_lim = 0. # [] (dry)
+
 
 # critical mass column of SO2 for observation
-u_so2_b = 1e-6*p_surf/9.81*sulfur.mu_so2/mu_atm # [kg/m3]
+u_so2_b = 1e-6*p_surf_earth/9.81*sulfur.mu_so2/mu_air # [kg/m3]
 u_so2_lim = 1e-2*u_so2_b # [kg/m3]
 
 
 # print critical total atmospheric sulfur to be observable
 # for Earth-like planetary conditions
 # both best estimate and limiting scenarios
+
+best_aero_Earth = sulfur.Sulfur_Cycle(Earth_atm,'aero')
+lim_aero_G_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_G_lim,alpha=1.,t_convert=t_G)
+lim_aero_M_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_M_lim,alpha=1.,t_convert=t_M,is_M=True,is_G=False)
+best_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm,'gas',u_so2=u_so2_b)
+lim_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'gas',u_so2=u_so2_lim)
+
+print('t_M',t_M)
+print('t_G',t_G)
+
+
 t = PrettyTable(['obs S','model param',' # S atoms','# S moles', 'S kg'])
 
-atoms, moles, kg = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
-                      R_p_earth, M_p_earth, w, t_mix,
-                      t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2)
-t.add_row(['aerosol','best','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+atoms = best_aero_Earth.N_S_atm
+moles = best_aero_Earth.mol_S_atm
+kg = best_aero_Earth.mass_S_atm
+t.add_row(['aerosol','best','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
-atoms, moles, kg = sulfur.calc_crit_S_atm_obs_haze(tau, r_M_lim, T_surf, T_strat, p_surf,
-                            R_p_earth, M_p_earth, w, t_mix,
-                            t_convert_M_lim, 1.,0.,f_n2,f_o2,f_co2,is_M)
-t.add_row(['aerosol','limiting M','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+atoms = lim_aero_M_Earth.N_S_atm
+moles = lim_aero_M_Earth.mol_S_atm
+kg = lim_aero_M_Earth.mass_S_atm
+t.add_row(['aerosol','limiting M','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
-atoms, moles, kg = sulfur.calc_crit_S_atm_obs_haze(tau, r_G_lim, T_surf, T_strat, p_surf,
-                            R_p_earth, M_p_earth, w, t_mix,
-                            t_convert_G_lim, 1.,0.,f_n2,f_o2,f_co2)
-t.add_row(['aerosol','limiting G','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+atoms = lim_aero_G_Earth.N_S_atm
+moles = lim_aero_G_Earth.mol_S_atm
+kg = lim_aero_G_Earth.mass_S_atm
+t.add_row(['aerosol','limiting G','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
-atoms, moles, kg = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)
-t.add_row(['gas','best','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+atoms = best_gas_Earth.N_S_atm
+moles = best_gas_Earth.mol_S_atm
+kg = best_gas_Earth.mass_S_atm
+t.add_row(['gas','best','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
-atoms, moles, kg = sulfur.calc_crit_S_atm_obs_SO2(u_so2_lim,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)
-t.add_row(['gas','limiting','%1.1E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+atoms = lim_gas_Earth.N_S_atm
+moles = lim_gas_Earth.mol_S_atm
+kg = lim_gas_Earth.mass_S_atm
+t.add_row(['gas','limiting','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
 
 print('critical total atmospheric sulfur to be observable')
 print(t)
@@ -444,76 +473,89 @@ print(t)
 # in the atmosphere for observation
 print('creating Figure 4')
 fig, axarr = plt.subplots(3,2,sharey=True,figsize=(6,8))
+print('calculating sensitivities')
 # SURFACE TEMPERATURE
+print('\t surface temperature')
 axarr[0,0].set_title(r'$T_\mathrm{surf}$')
 axarr[0,0].set_xlabel(r'$T_\mathrm{surf}$ [K]')
 T_surfs = np.linspace(250,400,n)
 N_S_T_surfs = np.zeros((n,2))
 for i,T in enumerate(T_surfs):
-    N_S_T_surfs[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T, T_strat, p_surf,
-                                R_p_earth, M_p_earth, w, t_mix,
-                                t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
-    N_S_T_surfs[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
-N_S_base0 = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
-                            R_p_earth, M_p_earth, w, t_mix,
-                            t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
-N_S_base1 = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
+    pl = Planet(1,T,T_strat,p_surf_earth,X,1)
+    atm = atm_pro.Atm(pl,RH_earth)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_T_surfs[i,0] = S_test_aero.N_S_atm
+    N_S_T_surfs[i,1] = S_test_gas.N_S_atm
+N_S_base0 = best_aero_Earth.N_S_atm
+N_S_base1 = best_gas_Earth.N_S_atm
 axarr[0,0].plot(T_surfs,N_S_T_surfs[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[0,0].plot(T_surfs,N_S_T_surfs[:,1]/N_S_base1,c='#002fa7',label='gas')
-axarr[0,0].axvline(T_surf,ls='--',c='0.8')
+axarr[0,0].axvline(T_earth,ls='--',c='0.8')
 
 axarr[0,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 axarr[1,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 axarr[2,0].set_ylabel(r'$N^\ast_{\mathrm{S}}/N^\ast_{\mathrm{S,}\oplus}$')
 
 # STRATOSPHERIC TEMPERATURE
+print('\t stratospheric temperature')
 axarr[1,0].set_title(r'$T_\mathrm{strat}$')
 T_strats = np.linspace(150,215,n)
 N_S_T_strats = np.zeros((n,2))
 for i,T in enumerate(T_strats):
-    N_S_T_strats[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T, p_surf,
-                                R_p_earth, M_p_earth, w, t_mix,
-                                t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
-    N_S_T_strats[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
+    pl = Planet(1,T_earth,T,p_surf_earth,X,1)
+    atm = atm_pro.Atm(pl,RH_earth)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_T_strats[i,0] = S_test_aero.N_S_atm
+    N_S_T_strats[i,1] = S_test_gas.N_S_atm
 axarr[1,0].plot(T_strats,N_S_T_strats[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[1,0].plot(T_strats,N_S_T_strats[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[1,0].axvline(T_strat,ls='--',c='0.8')
 axarr[1,0].set_xlabel(r'$T_\mathrm{strat}$ [K]')
 
 # SURFACE PRESSURE
+print('\t surface pressure')
 axarr[0,1].set_title(r'$p_\mathrm{surf}$')
 axarr[0,1].set_xlabel(r'$p_\mathrm{surf}$ [Pa]')
 p_surfs = np.logspace(-2,2,n)*1.01325e5
 N_S_p_surfs = np.zeros((n,2))
 for i,p in enumerate(p_surfs):
-    N_S_p_surfs[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p,
-                                R_p_earth, M_p_earth, w, t_mix,
-                                t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]
-    N_S_p_surfs[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
+    pl = Planet(1,T_earth,T_strat,p,X,1)
+    atm = atm_pro.Atm(pl,RH_earth)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_p_surfs[i,0] = S_test_aero.N_S_atm
+    N_S_p_surfs[i,1] = S_test_gas.N_S_atm
 axarr[0,1].plot(p_surfs,N_S_p_surfs[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[0,1].plot(p_surfs,N_S_p_surfs[:,1]/N_S_base1,c='#002fa7',label='gas')
-axarr[0,1].axvline(p_surf,ls='--',c='0.8')
+axarr[0,1].axvline(p_surf_earth,ls='--',c='0.8')
 axarr[0,1].set_xscale('log')
 
 # PLANET SIZE
+print('\t planet size')
 axarr[2,0].set_title(r'$R_\mathrm{P}$')
 axarr[2,0].set_xlabel(r'$R_\mathrm{P}$ [$R_\oplus$]')
-R_ps = np.linspace(0.25,1.6,n)*R_earth
-convert = M_earth/R_earth**(1./0.27)
-M_ps = convert*R_ps**(1./0.27)/M_earth
-R_ps = R_ps/R_earth
+R_ps = np.linspace(0.25,1.6,n)
 N_S_size = np.zeros((n,2))
 for i,R in enumerate(R_ps):
-    N_S_size[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
-                                R, M_ps[i], w, t_mix,
-                                t_convert_b, alpha_b,RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)[0]/M_ps[i]
-    N_S_size[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R,M_ps[i],f_n2,f_o2,f_co2)[0]/M_ps[i]
-axarr[2,0].plot(R_ps,N_S_size[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
-axarr[2,0].plot(R_ps,N_S_size[:,1]/N_S_base1,c='#002fa7',label='gas')
+    pl = Planet(R,T_earth,T_strat,p_surf_earth,X)
+    atm = atm_pro.Atm(pl,RH_earth)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_size[i,0] = S_test_aero.N_S_atm/pl.M
+    N_S_size[i,1] = S_test_gas.N_S_atm/pl.M
+axarr[2,0].plot(R_ps,N_S_size[:,0]/N_S_base0*M_earth,c='#ff8c00',label='aerosol')
+axarr[2,0].plot(R_ps,N_S_size[:,1]/N_S_base1*M_earth,c='#002fa7',label='gas')
 axarr[2,0].axvline(1,ls='--',c='0.8')
 
 # ATMOSPHERIC COMPOSITION
 # vary between all N2 and all CO2
+print('\t atmospheric composition')
 axarr[1,1].set_title('composition')
 axarr[1,1].set_xlabel(r'$\mu$ [g/mol]')
 percent_x = np.linspace(0,1,n)
@@ -521,27 +563,37 @@ mus = np.zeros(n)
 N_S_mus = np.zeros((n,2))
 for i,x in enumerate(percent_x):
     mus[i] = ((1-x)*mu_n2 + x*mu_co2)
-    N_S_mus[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
-                                R_p_earth, M_p_earth, w, t_mix,
-                                t_convert_b, alpha_b,RH_h2o_surf_b,1-x,0,x,is_G)[0]
-    N_S_mus[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,1-x,0,x)[0]
+    X_test = np.zeros(5)
+    X_test[2] = 1-x
+    X_test[4] = x
+    pl = Planet(1,T_earth,T_strat,p_surf_earth,X_test,1)
+    atm = atm_pro.Atm(pl,RH_earth)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_mus[i,0] = S_test_aero.N_S_atm
+    N_S_mus[i,1] = S_test_gas.N_S_atm
 axarr[1,1].plot(mus*1e3,N_S_mus[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[1,1].plot(mus*1e3,N_S_mus[:,1]/N_S_base1,c='#002fa7',label='gas')
-axarr[1,1].axvline(mu_air*1e3,ls='--',c='0.8')
+axarr[1,1].axvline(Earth.mu_dry*1e3,ls='--',c='0.8')
 
 # WATER CONTENT
 # vary RH at surface
+print('\t surface relative humidity')
 axarr[2,1].set_title(r'$\mathrm{RH}_{\mathrm{surf}}$')
 axarr[2,1].set_xlabel(r'$\mathrm{RH}_{\mathrm{surf}}$')
 RH_h2o_surfs = np.logspace(-5,0,n)
 N_S_f_h2os = np.zeros((n,2))
 for i,RH in enumerate(RH_h2o_surfs):
-    N_S_f_h2os[i,0] = sulfur.calc_crit_S_atm_obs_haze(tau, r_b, T_surf, T_strat, p_surf,
-                                R_p_earth, M_p_earth, w, t_mix,
-                                t_convert_b, alpha_b,RH,f_n2,f_o2,f_co2)[0]
-    N_S_f_h2os[i,1] = sulfur.calc_crit_S_atm_obs_SO2(u_so2_b,p_surf,T_surf,R_p_earth,M_p_earth,f_n2,f_o2,f_co2)[0]
-f_h2o_surfs = RH_h2o_surfs*atm_pro.p_h2osat(T_surf)/p_surf # []
-f_h2o_surf_b = RH_h2o_surf_b*atm_pro.p_h2osat(T_surf)/p_surf # []
+    pl = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
+    atm = atm_pro.Atm(pl,RH)
+    atm.set_up_atm_pro()
+    S_test_aero = sulfur.Sulfur_Cycle(atm,'aero')
+    S_test_gas = sulfur.Sulfur_Cycle(atm,'gas')
+    N_S_f_h2os[i,0] = S_test_aero.N_S_atm
+    N_S_f_h2os[i,1] = S_test_gas.N_S_atm
+f_h2o_surfs = RH_h2o_surfs*h2o.p_sat(T_earth)/p_surf_earth # []
+f_h2o_surf_b = RH_earth*h2o.p_sat(T_earth)/p_surf_earth # []
 axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='#002fa7',label='gas')
 axarr[2,1].axvline(f_h2o_surf_b,ls='--',c='0.8',label='Earth value')
@@ -582,30 +634,26 @@ ocgrid_ex, pHgrid_ex  = np.meshgrid(oceans_ex,pH)
 ocgrid_ex2, pHgrid_ex2  = np.meshgrid(oceans_ex2,pH)
 
 print('creating Figures 7-10')
+
 # limiting case with M star -- aerosols
-t_SIV_M_lim = sulfur.calc_t_SIV(tau, r_M_lim, T_surf, T_strat, p_surf,
-                         R_p_earth, M_p_earth, ocgrid, pHgrid, w, t_mix,
-                         t_convert_M_lim, alpha_lim, n_outgass_lim,
-                         RH_h2o_surf_lim,f_n2,f_o2,f_co2, is_M)
+lim_aero_M_Earth.calc_oc_S(ocgrid, pHgrid)
+t_SIV_M_lim = lim_aero_M_Earth.calc_t_SIV(n_outgass_lim)
+
 # limiting case with G star -- aerosols
-t_SIV_G_lim = sulfur.calc_t_SIV(tau, r_G_lim, T_surf, T_strat, p_surf,
-                         R_p_earth, M_p_earth, ocgrid, pHgrid, w, t_mix,
-                         t_convert_G_lim, alpha_lim, n_outgass_lim,
-                         RH_h2o_surf_lim,f_n2,f_o2,f_co2,is_G)
+lim_aero_G_Earth.calc_oc_S(ocgrid, pHgrid)
+t_SIV_G_lim = lim_aero_G_Earth.calc_t_SIV(n_outgass_lim)
+
 # reasonable case -- aerosols
-t_SIV_b = sulfur.calc_t_SIV(tau, r_b, T_surf, T_strat, p_surf,
-                         R_p_earth, M_p_earth, ocgrid_ex, pHgrid_ex, w, t_mix,
-                         t_convert_b, alpha_b, n_outgass_b,
-                         RH_h2o_surf_b,f_n2,f_o2,f_co2,is_G)
+best_aero_Earth.calc_oc_S(ocgrid_ex, pHgrid_ex)
+t_SIV_b = best_aero_Earth.calc_t_SIV(n_outgass_b)
+
+# reasonable case -- SO2 (gas)
+best_gas_Earth.calc_oc_S(ocgrid_ex2, pHgrid_ex2)
+t_SIV_gas = best_gas_Earth.calc_t_SIV(n_outgass_b)
 
 # limiting case -- SO2 (gas)
-t_SIV_gas = sulfur.calc_t_SIV_SO2(u_so2_b,p_surf,T_surf,
-                                  pHgrid_ex2,ocgrid_ex2,n_outgass_b,R_p_earth,
-                                  M_p_earth,f_n2,f_o2,f_co2)
-# reasonable case -- SO2 (gas)
-t_SIV_gas_lim = sulfur.calc_t_SIV_SO2(u_so2_lim,p_surf,T_surf,
-                                      pHgrid_ex0,ocgrid_ex0,n_outgass_lim,
-                                      R_p_earth,M_p_earth,f_n2,f_o2,f_co2)
+lim_gas_Earth.calc_oc_S(ocgrid_ex0, pHgrid_ex0)
+t_SIV_gas_lim = lim_gas_Earth.calc_t_SIV(n_outgass_lim)
 
 #place in log10 years where t_SIV becomes reasonable
 likely = -1
@@ -649,7 +697,7 @@ ax2.add_patch(interesting_oc2)
 
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
 oc_aero_lM = 2.6e-3 # [Earth oc]
-oc_aero_lG = 4e-3 # [Earth oc]
+oc_aero_lG = 3.5e-3 # [Earth oc]
 h_aero_lM = oc_aero_lM*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 h_aero_lG = oc_aero_lG*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 

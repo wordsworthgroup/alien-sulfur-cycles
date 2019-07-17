@@ -53,12 +53,11 @@ def mie_coeff(m, x, nmax):
 
 	return an, bn
 
-def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
+def mie_scatter(m,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 	'''
 	calculate Mie scattering and absorption efficiencies vs. size parameter
 	inputs:
-		* m_r [] - real component of index of refraction
-		* m_i [] - imaginary component of index of refraction
+		* m [] - complex index of refraction
 		* x0 [] - optional, for scattering efficiencies for one size parameter x0
 		* xparams [] - optional, used to calculated size parameters
 		if want to vary particle radius or wavelength of indicident light;
@@ -111,7 +110,6 @@ def mie_scatter(m_r,m_i,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 
 	# number of terms in polynomial expansion
 	n    = np.arange(1,nmax+1)
-	m    = complex(m_r,m_i)
 	y    = m*x
 
 	# set up empty scattering and extinction efficiency arrays

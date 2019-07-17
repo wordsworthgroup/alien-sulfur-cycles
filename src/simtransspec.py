@@ -65,7 +65,7 @@ def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
     n_aero = n_h2so4/n_h2so4_per_aero
     return n_aero
 
-def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,f_t_p,mu_air):
+def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,atm):
     '''
     create the profile of water cloud particles
     water cloud particle density at each pressure layer
@@ -77,9 +77,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,f_t_p,mu_air):
         * n_water [# water particles/m3] - number density of water
                                            particles within cloud
         * cloud_thickness [m] - height of cloud
-        * f_t_p [function] - function that converts pressure to temperature
-                             in given atmosphere
-        * mu_air [kg/mol] - average molar mass of air
+        * atm [Atm] - Atm object with atmospheric properties
     output:
         * n_h2o [# water particles/m3] - number density of water particles
                                          at each pressure level
@@ -87,9 +85,9 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,f_t_p,mu_air):
     # empty cloud profile
     n_h2o = np.zeros(n)
     # T at pressure where cloud starts
-    T_start = f_t_p(p_start)
+    T_start = atm.p2T(p_start)
     # local scale height to convert cloud thickness in m to Pa
-    H = R_gas*T_start/g_earth/mu_air
+    H = R_gas*T_start/atm.planet.g/atm.p2mu(p_start)
     # top of cloud -- convert cloud thickness to a pressure
     p_top_cloud = p_start*np.exp(-cloud_thickness/H)
     for i in range(n):
@@ -97,7 +95,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,f_t_p,mu_air):
             n_h2o[i] = n_water
     return n_h2o
 
-def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
+def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
         is_high_clouds=False,w=0.75,R_air=287.,
         c_p_air=1.003e3,p_min=1,RH_h2o_surf=0.75):
     '''
@@ -111,10 +109,7 @@ def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
     H2SO4-H2O aerosols can be toggled on or off
     convective water or high atmosphere ice clouds can be toggled on or off
     inputs:
-        * p_surf [Pa] - surface pressure
-        * T_surf [K] - surface temperature
-        * T_strat [K] - (isothermal) stratosphere temperature
-        * delta_T [K] -
+        * atm [Atm] - Atm object with atmospheric profile calculated
         * n [#] - number of natural-log-spaced pressure layers to include
         * tau [] - vertical optical depth of H2SO4-H2O aerosols
         * r_h2so4h2o [m] - radius of H2SO4-H2O aerosol particles
@@ -129,37 +124,14 @@ def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
         * nothing but saves profile as a csv file of profile
           named according to inputs
     '''
-    # surface water mixing ratio
-    f_h2o_surf = RH_h2o_surf*atm_pro.p_h2osat(T_surf)/p_surf # []
-
-    # determine where moist adiabat starts
-    T_transition_moist = brentq(atm_pro.T_transition_moist0,T_surf, T_strat, args=(p_surf,T_surf,f_h2o_surf,R_air,c_p_air))
-    kappa = R_air/c_p_air
-    p_transition_moist = p_surf*(T_transition_moist/T_surf)**(1./kappa)
-
-    # Earth-like composition
-    f_n2_dry = 0.7809
-    f_o2_dry = 0.2095
-    f_co2_dry = 400.e-6
-
-    # integrate to get moist adiabat
-    T_Tspaced,p_Tspaced = atm_pro.calc_moist(delta_T,T_transition_moist,p_transition_moist,T_strat,f_h2o_surf,p_surf,T_surf,f_n2_dry,f_o2_dry,f_co2_dry)
-
-    #calculate T for a given P in moist adiabat by interpolating from diff eq solution
-    tp_pro_moist = interp1d(p_Tspaced,T_Tspaced)
-    tp_pro_moist_tofp = interp1d(T_Tspaced,p_Tspaced)
-    p_strat = tp_pro_moist_tofp(T_strat)
-    f_h2o_strat = atm_pro.p_h2osat(T_strat)/p_strat
-    f_nonh2o_strat = 1 - f_h2o_strat
-
     # create atmosphere profile to be saved to csv
     profile = np.zeros((n,9))
     # pressure
-    profile[:,0] = np.logspace(np.log10(p_surf), np.log10(p_min), n)
+    profile[:,0] = np.logspace(np.log10(atm.planet.p_surf), np.log10(p_min), n)
     # temperature
-    profile[:,1] = list(map(lambda x: atm_pro.tp_pro(x,p_transition_moist,p_strat,p_surf,T_surf,T_strat,tp_pro_moist),profile[:,0]))
+    profile[:,1] = atm.p2T(profile[:,0])
     # pH2O
-    profile[:,2] = list(map(lambda x: atm_pro.h2o_pro(x,p_transition_moist,p_strat,f_h2o_surf,f_h2o_strat,tp_pro_moist),profile[:,0]))
+    profile[:,2] = atm.p2p_h2o(profile[:,0])
     # p non condensing
     p_nonh2o = (profile[:,0] - profile[:,2])
 
@@ -167,32 +139,31 @@ def input_pro(p_surf,T_surf,T_strat,delta_T,n,tau,r_h2so4h2o,r_cloud=0,
     if r_h2so4h2o!=0:
         # calculate extinction efficiency of H2SO4-H2O aerosols to
         # calculate proper optical depth
-        f_so2_dry, f_h2so4_dry = sulfur.crit_S(r_h2so4h2o, tau, T_surf, T_strat,
-                                               p_strat, w=w,t_mix=s_in_yr,
-                                               t_convert=3600.*24.*30)
+        aero = sulfur.Sulfur_Cycle(atm,'aero',tau=tau,r=r_h2so4h2o)
+        f_so2, f_h2so4 = aero.calc_f_S()
         # pSO2
-        profile[:,3] = f_so2_dry*p_nonh2o
+        profile[:,3] = f_so2*profile[:,0]
 
     #pN2
-    profile[:,4] = f_n2_dry*p_nonh2o
+    profile[:,4] = atm.planet.atm_comp_dry[2]*p_nonh2o
     #pO2
-    profile[:,5] = f_o2_dry*p_nonh2o
+    profile[:,5] = atm.planet.atm_comp_dry[3]*p_nonh2o
     #pCO2
-    profile[:,6] = f_co2_dry*p_nonh2o
+    profile[:,6] = atm.planet.atm_comp_dry[4]*p_nonh2o
 
     # number density of H2SO4-H2O aerosols of radius r
     if r_h2so4h2o!=0:
-        profile[:,7] = h2so4h2o_profile(f_h2so4_dry*p_nonh2o,
-                                          r_h2so4h2o,T_strat,w,n,p_strat,
+        profile[:,7] = h2so4h2o_profile(f_h2so4*profile[:,0],
+                                          r_h2so4h2o,atm.planet.T_strat,w,n,atm.p_transition_strat,
                                           profile[:,0])
 
     # number density of water cloud particles
     if r_cloud!=0:
         if is_high_clouds:
-            p_start = p_surf*np.exp(-0.7*np.log(p_surf/p_strat))
-            profile[:,8] = water_cloud_profile(profile[:,0],p_start,n,30.e-3,1.5e3,tp_pro_moist,mu_air)
+            p_start = atm.planet.p_surf*np.exp(-0.7*np.log(atm.planet.p_surf/atm.p_transition_strat))
+            profile[:,8] = water_cloud_profile(profile[:,0],p_start,n,30.e-3,1.5e3,atm)
         else:
-            profile[:,8] = water_cloud_profile(profile[:,0],p_transition_moist,n,100,1.e3,tp_pro_moist,mu_air)
+            profile[:,8] = water_cloud_profile(profile[:,0],atm.p_transition_moist,n,100,1.e3,atm)
 
     # convert Pa to bars for pressure columns
     profile[:,2:7] = profile[:,2:7]*1e-5
