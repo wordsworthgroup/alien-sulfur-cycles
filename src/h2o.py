@@ -1,6 +1,7 @@
 ################################################################
-# H2O properties 
+# H2O properties
 ################################################################
+
 import numpy as np
 
 # molar mass
@@ -15,8 +16,10 @@ def p_sat(T):
     '''
     calculate saturation partial pressure of water for a given temperature
     follows Buck equation
+
     input:
         * T [K] - local temperature
+        
     output:
         * p [Pa] - saturation partial pressure of water
     '''
@@ -28,9 +31,13 @@ def p_sat(T):
 
 def L(T):
     '''
+    calculate latent heat of vaporization
+    currently not temperature dependent
+
     input:
         * T [K] - local temperature
+
     output:
-        * water's latent heat of vaporization [J/kg]
+        * Lv [J/kg] - water's latent heat of vaporization
     '''
     return 2496.5e3 # [J/kg]

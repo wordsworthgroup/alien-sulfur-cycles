@@ -1,3 +1,7 @@
+################################################################
+# create an object for storing planetary attributes
+################################################################
+
 import numpy as np
 
 # CONSTANTS
@@ -9,7 +13,7 @@ R_earth = 6.371e6 # [m]
 
 class Planet:
     '''
-    Planet class (really a structure)
+    Planet class (really more of a structure)
     planetary properties
     attributes:
         * R [m] - planet radius
@@ -31,15 +35,15 @@ class Planet:
     def __init__(self,Rp_earth,T_surf,T_strat,p_surf,atm_comp,Mp_earth=None):
         '''
         constructor for Planet class
-        initilize Planet object
+        initialize Planet object
         inputs:
             * Rp_earth [Earth radii] - planet radius
             * T_surf [K] - surface temperature
-            * T_strat [K] - stratospheric temperature ** perhaps unneccessary?
+            * T_strat [K] - stratospheric temperature
             * p_surf [Pa] - surface pressure
             * atm_comp [volume mixing ratio] - dry atmospheric composition array
                                                [H2, He, N2, O2, CO2]
-            * Mp_earth [Earth masses] - planet mass
+            * (optional) Mp_earth [Earth masses] - planet mass
         '''
         self.R = Rp_earth*R_earth # [m] planetary radius
         # set planetary mass
@@ -58,6 +62,7 @@ class Planet:
         self.p_surf = p_surf # [Pa] surface pressure
 
         # confirm atmospheric composition sums to 1 to ~ machine error
+        # and there are 5 atmospheric gases with concentrations
         # if not, terminate proceedings
         if abs(np.sum(atm_comp) - 1.) > 1e-9:
             raise Exception('atmospheric composition does not sum to 1')

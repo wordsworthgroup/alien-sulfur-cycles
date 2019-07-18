@@ -12,8 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import os
-from scipy.optimize import brentq
-from scipy.interpolate import interp1d
 import scipy.integrate as integrate
 from matplotlib.patches import Rectangle
 from prettytable import PrettyTable
@@ -24,12 +22,16 @@ import src.simtransspec as sts
 import src.photochem as pc
 from src.planet import Planet
 from cycler import cycler
-from copy import deepcopy
 import src.h2o as h2o
 
 ################################################################
 # SETUP
 ################################################################
+
+print('\nRESULTS FROM LOFTUS, WORDSWORTH, & MORLEY (2019)')
+print('figures in paper saved in directory ./figs')
+print('additional figures saved in directory ./figs_sup')
+print('inputs for transit spectra saved in directory ./spec_inputs')
 
 # create directory to store figures in
 os.makedirs('./figs', exist_ok=True)
@@ -41,52 +43,43 @@ M_earth = 5.9721986*10**24 # [kg]
 R_earth = 6.371*10**6 # [m]
 mass_earth_ocean = 1.4*10**21 # [kg]
 
-eta_air = 1.6e-5 # [Pa/s]
 mu_air = 0.02896 #[kg/mol]
-c_p_air=1.003*1000 # [J/kg/K]
-R_air = 287.058 # [J/kg/K]
 
 pH_earth = 8.14
 T_earth = 288 # [K]
 p_SO2_earth = 1.01325e5*1e-10 # [Pa]
 
+# CONSTANTS
 s_in_yr = 365.25*3600.*24. # [s/yr]
 
-mu_o2 = 0.031998 #kg/mol
 mu_n2 = 0.028014 #kg/mol
 mu_co2 = 0.04401 #kg/mol
-mu_h2o = 0.018015 #[kg/mol]
 rho_h2o = 1000 #[kg/m3]
 
 # color scheme where 3 colors are necessary
 colors3 = ['#002fa7','deepskyblue','#C1DBE6']
 
-# set up dry and (wet) Earths
+# set up dry and normal (wet) Earths
 # dry atm composition
-# [H2, He, N2, O2, CO2]
 f_o2 = 0.2095 # [vmr] O2
 f_co2 = 400.e-6 # [vmr] #CO2
 # to ensure atm components add up to 1
 f_n2 = 1. - f_o2 - f_co2 # [vmr] N2
+# composition array X [H2, He, N2, O2, CO2]
 X = np.array([0.,0.,f_n2,f_o2,f_co2])
 T_strat = 200 # [K]
 p_surf_earth = 1.01325e5 # [Pa]
 RH_earth = 0.77 # []
+# wet Earth
 Earth = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
-Earth_dry = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
 Earth_atm = atm_pro.Atm(Earth,RH_earth)
 # integrate to get atmospheric profile
 Earth_atm.set_up_atm_pro()
+# dry Earth
+Earth_dry = Planet(1,T_earth,T_strat,p_surf_earth,X,1)
 Earth_atm_dry = atm_pro.Atm(Earth_dry,0.)
 # integrate to get atmospheric profile
 Earth_atm_dry.set_up_atm_pro()
-
-
-
-print('\nRESULTS FROM LOFTUS, WORDSWORTH, & MORLEY (2019)')
-print('figures in paper saved in directory ./figs')
-print('additional figures saved in directory ./figs_sup')
-print('inputs for transit spectra saved in directory ./spec_inputs')
 
 ################################################################
 # MIE SCATTERING
@@ -99,7 +92,7 @@ print('\n-----------------------------------------------\n'
 print('creating Figure 2')
 # calculate scattering and extinction efficiencies for Sun-like and M-dwarf light
 m_medium = 1. # assume index of refraction of air is 1
-lambda_sol = 0.556 #[um] wavelength for a Sun-like star
+lambda_G = 0.556 #[um] wavelength for a Sun-like (G) star
 lambda_M = 1. #[um] wavelength for a M-dwarf
 
 # index of refraction of H2SO4-H2O for w=75%
@@ -115,24 +108,24 @@ r = np.logspace(r_min,r_max,500)
 
 # calculate Mie size parameter (x_*), scattering efficiency (Qs_*),
 # and extinction efficiency (Qe_*)
-x_sol, Qs_sol, Qe_sol = mie.mie_scatter(m_G,
-                                        xparams=[r_min,r_max,m_medium,lambda_sol],
+x_G, Qs_G, Qe_G = mie.mie_scatter(m_G,
+                                        xparams=[r_min,r_max,m_medium,lambda_G],
                                         vary_lambda=False)
 x_M, Qs_M, Qe_M = mie.mie_scatter(m_M,
-                                  xparams=[r_min,r_max,m_medium,lambda_sol],
+                                  xparams=[r_min,r_max,m_medium,lambda_M],
                                   vary_lambda=False)
 # calculate Rayleigh scattering for same size parameters
-Qe_sol_ray = mie.Rayleigh(x_sol,m_G.real)
+Qe_G_ray = mie.Rayleigh(x_G,m_G.real)
 Qe_M_ray = mie.Rayleigh(x_M,m_M.real)
 # translate size parameters back to radii
-r_sol = x_sol/2./np.pi*lambda_sol
+r_G = x_G/2./np.pi*lambda_G
 r_M = x_M/2./np.pi*lambda_M
 
 # FIGURE 2
 # extinction efficiency vs particle radius
-plt.plot(r_sol,Qe_sol,c=colors3[0],label='Mie, Sun-like')
+plt.plot(r_G,Qe_G,c=colors3[0],label='Mie, Sun-like')
 plt.plot(r_M,Qe_M,c=colors3[2],label='Mie, M-dwarf')
-plt.plot(r_sol,Qe_sol_ray,c=colors3[0],ls='--',label='Rayleigh, Sun-like')
+plt.plot(r_G,Qe_G_ray,c=colors3[0],ls='--',label='Rayleigh, Sun-like')
 plt.plot(r_M,Qe_M_ray,c=colors3[2],ls='--',label='Rayleigh, M-dwarf')
 plt.xlabel(r'r [$\mu$m]')
 plt.xscale('log')
@@ -146,16 +139,16 @@ plt.close()
 print('Figure 2 saved')
 
 # print Qe for particle size of interest for each star
-r_sol_sing = 0.1 # [um]
+r_G_sing = 0.1 # [um]
 r_M_sing = 0.2 # [um]
-Qe_sol_sing = mie.mie_scatter(m_G, x0=2.*np.pi*r_sol_sing/lambda_sol)[2]
-r_sol_sing2 = 1. # [um]
-Qe_sol_sing2 = mie.mie_scatter(m_G, x0=2.*np.pi*r_sol_sing2/lambda_sol)[2]
+Qe_G_sing = mie.mie_scatter(m_G, x0=2.*np.pi*r_G_sing/lambda_G)[2]
+r_G_sing2 = 1. # [um]
+Qe_G_sing2 = mie.mie_scatter(m_G, x0=2.*np.pi*r_G_sing2/lambda_G)[2]
 Qe_M_sing = mie.mie_scatter(m_M, x0=2.*np.pi*r_M_sing/lambda_M)[2]
 
 t = PrettyTable(['star','lambda [um]','r [um]','Qe []'])
-t.add_row(['G','0.556','1','%1.3F'%Qe_sol_sing2])
-t.add_row(['G','0.556','0.1','%1.3F'%Qe_sol_sing])
+t.add_row(['G','0.556','1','%1.3F'%Qe_G_sing2])
+t.add_row(['G','0.556','0.1','%1.3F'%Qe_G_sing])
 t.add_row(['M','1.0','0.2','%1.3F'%Qe_M_sing])
 print(t)
 
@@ -200,7 +193,7 @@ print('to show assumed stellar spectrum for a M star')
 pc.plot_stellar_spectrum(spectrum_photo_M,fig_name='stellar_spec_M')
 print('Supplemental Figure stellar_spec_M saved\n')
 
-# plot absorbtion cross sections with and without SO2
+# plot absorption cross sections with and without SO2
 print('creating Supplemental Figures abs_x_*')
 print('to show absorption cross sections for different molecules of interest')
 pc.plot_cross_section(spectrum_photo_G,cross_w_SO2,cross_max)
@@ -402,68 +395,49 @@ print('\n-----------------------------------------------\n'
 # set up baseline Earth-based values
 n = 50
 
-r_b = 1.e-6 # [m]
+# non-standard model parameters (as in Table 1)
 r_G_lim = 1.e-7 # [m]
 r_M_lim = 2.e-7 # [m]
-tau = 0.1 # []
-is_G = True
-is_M = False
-t_convert_M_lim =  t_M #[s]
-t_convert_G_lim =  t_G #[s]
-t_convert_b =      3600.*24.*30. #[s]
-alpha_lim = 1 #[]
-alpha_b = 0.1 #[]
-w = 0.75 # [kg/kg]
 t_mix = 1.*s_in_yr # [s]
 n_outgass_lim = 200. # [modern Earth outgassing]
 n_outgass_b = 1. # [modern Earth outgassing]
-
 
 # critical mass column of SO2 for observation
 u_so2_b = 1e-6*p_surf_earth/9.81*sulfur.mu_so2/mu_air # [kg/m3]
 u_so2_lim = 1e-2*u_so2_b # [kg/m3]
 
 
-# print critical total atmospheric sulfur to be observable
-# for Earth-like planetary conditions
-# both best estimate and limiting scenarios
-
+# set up standard sulfur cycle objects for Earth-baseline conditions
 best_aero_Earth = sulfur.Sulfur_Cycle(Earth_atm,'aero')
-lim_aero_G_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_G_lim,alpha=1.,t_convert=t_G)
+lim_aero_G_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_G_lim,alpha=1.,t_convert=t_G,t_mix=t_mix*3)
 lim_aero_M_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_M_lim,alpha=1.,t_convert=t_M,is_M=True,is_G=False)
 best_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm,'gas',u_so2=u_so2_b)
 lim_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'gas',u_so2=u_so2_lim)
 
-print('t_M',t_M)
-print('t_G',t_G)
-
-
+# print critical total atmospheric sulfur to be observable
+# for Earth-like planetary conditions
+# both best estimate and limiting scenarios
 t = PrettyTable(['obs S','model param',' # S atoms','# S moles', 'S kg'])
 
-atoms = best_aero_Earth.N_S_atm
-moles = best_aero_Earth.mol_S_atm
-kg = best_aero_Earth.mass_S_atm
-t.add_row(['aerosol','best','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+t.add_row(['aerosol','best','%1.3E'%best_aero_Earth.N_S_atm,
+           '%1.3E'%best_aero_Earth.mol_S_atm,
+           '%1.3E'%best_aero_Earth.mass_S_atm])
 
-atoms = lim_aero_M_Earth.N_S_atm
-moles = lim_aero_M_Earth.mol_S_atm
-kg = lim_aero_M_Earth.mass_S_atm
-t.add_row(['aerosol','limiting M','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+t.add_row(['aerosol','limiting M','%1.3E'%lim_aero_M_Earth.N_S_atm,
+           '%1.3E'%lim_aero_M_Earth.mol_S_atm,
+           '%1.3E'%lim_aero_M_Earth.mass_S_atm])
 
-atoms = lim_aero_G_Earth.N_S_atm
-moles = lim_aero_G_Earth.mol_S_atm
-kg = lim_aero_G_Earth.mass_S_atm
-t.add_row(['aerosol','limiting G','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+t.add_row(['aerosol','limiting G','%1.3E'%lim_aero_G_Earth.N_S_atm,
+           '%1.3E'%lim_aero_G_Earth.mol_S_atm,
+           '%1.3E'%lim_aero_G_Earth.mass_S_atm])
 
-atoms = best_gas_Earth.N_S_atm
-moles = best_gas_Earth.mol_S_atm
-kg = best_gas_Earth.mass_S_atm
-t.add_row(['gas','best','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+t.add_row(['gas','best','%1.3E'%best_gas_Earth.N_S_atm,
+           '%1.3E'%best_gas_Earth.mol_S_atm,
+           '%1.3E'%best_gas_Earth.mass_S_atm])
 
-atoms = lim_gas_Earth.N_S_atm
-moles = lim_gas_Earth.mol_S_atm
-kg = lim_gas_Earth.mass_S_atm
-t.add_row(['gas','limiting','%1.3E'%atoms,'%1.3E'%moles, '%1.3E'%kg])
+t.add_row(['gas','limiting','%1.3E'%lim_gas_Earth.N_S_atm,
+           '%1.3E'%lim_gas_Earth.mol_S_atm,
+           '%1.3E'%lim_gas_Earth.mass_S_atm])
 
 print('critical total atmospheric sulfur to be observable')
 print(t)
@@ -474,6 +448,7 @@ print(t)
 print('creating Figure 4')
 fig, axarr = plt.subplots(3,2,sharey=True,figsize=(6,8))
 print('calculating sensitivities')
+
 # SURFACE TEMPERATURE
 print('\t surface temperature')
 axarr[0,0].set_title(r'$T_\mathrm{surf}$')
@@ -622,7 +597,9 @@ print('Figure 4 saved')
 print('\n-----------------------------------------------\n'
       +'SULFUR OBSERVABILITY GIVEN OCEAN PARAMETERS\n-----------------------------------------------')
 
-# various ocean parameters
+# various ocean parameters for pH and ocean size
+# (diff ocean sizes for optimally framed plots
+# compared to likely tSIVs)
 pH = np.linspace(1,14,n)
 oceans = np.logspace(-3.03,0.1,n)
 oceans_ex0 = np.logspace(-6,0.1,n)

@@ -4,16 +4,9 @@
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.optimize import brentq
-from scipy.interpolate import interp1d
-import src.mie as mie
-import src.atm_pro as atm_pro
 import src.sulfur as sulfur
 
 # CONSTANTS
-s_in_yr = 365.25*3600.*24. # [s/yr]
-
 k_B = 1.38065e-23 #J/K
 N_A = 6.0221409e23 #[particles/mol]
 R_gas = 8.31446 #[J/mol/K]
@@ -21,16 +14,6 @@ R_gas = 8.31446 #[J/mol/K]
 m_H2SO4 = 1.628e-25 # [kg]
 mu_h2so4 = 0.098078 # [kg/mol]
 rho_h2so4 = 1830.5 # [kg/m3]
-mu_h2o = 0.018015 #[kg/mol]
-rho_h2o = 1000 #[kg/m3]
-
-# EARTH SPECIFIC VALUES
-eta_air = 1.6e-5 #[Pa/s]
-mu_air = 0.02896 #[kg/mol]
-c_p_air=1.003*1000 #[J/kg/K]
-R_air = 287.058 #J/kg/K
-ep = mu_h2o/mu_air # []
-g_earth = 9.81 # [m/s2]
 
 def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
     '''
@@ -38,6 +21,7 @@ def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
     H2SO4-H2O aerosol number density at each pressure layer
     assumes number density of H2SO4-H2O aerosol decays exponentially
     from peak at tropopause
+
     inputs:
         * pH2SO4 [Pa] - partial pressure of H2SO4 profile
         * r [m] - radius of H2SO4-H2O aerosol
@@ -70,6 +54,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,atm):
     create the profile of water cloud particles
     water cloud particle density at each pressure layer
     assumes number density of water/ice particles within cloud is constant
+
     inputs:
         * p [Pa] - pressure profile
         * p_start [Pa] - pressure at which cloud starts
@@ -78,6 +63,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,atm):
                                            particles within cloud
         * cloud_thickness [m] - height of cloud
         * atm [Atm] - Atm object with atmospheric properties
+
     output:
         * n_h2o [# water particles/m3] - number density of water particles
                                          at each pressure level
@@ -96,8 +82,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,atm):
     return n_h2o
 
 def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
-        is_high_clouds=False,w=0.75,R_air=287.,
-        c_p_air=1.003e3,p_min=1,RH_h2o_surf=0.75):
+              is_high_clouds=False,w=0.75,p_min=1):
     '''
     generate profile for all the constituent parts of the atmosphere
     that (can) affect the transmission spectra: gases and particles
@@ -108,6 +93,7 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
     reached
     H2SO4-H2O aerosols can be toggled on or off
     convective water or high atmosphere ice clouds can be toggled on or off
+
     inputs:
         * atm [Atm] - Atm object with atmospheric profile calculated
         * n [#] - number of natural-log-spaced pressure layers to include
@@ -116,10 +102,8 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
         * r_cloud [m] - radius of H2O cloud particles
         * is_high_clouds [boolean] - True => high clouds, false => low clouds
         * w [kg/kg] - weight percent H2SO4 in aerosol
-        * R_air [] - specific gas constant of air
-        * c_p_air [] - specific heat for constant pressure of air
         * p_min [Pa] - minimum pressure of atmosphere profile
-        * RH_h2o_surf [] - relative humidity of water at the surface
+
     outputs:
         * nothing but saves profile as a csv file of profile
           named according to inputs
@@ -181,9 +165,11 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
 def calc_avg_spec(fname,n_chunks=500):
     '''
     average spectrum over log spaced bins
+
     inputs:
         * fname [string] - file name containing spectrum
         * n_chunks [] - number of bins to average to
+
     outputs:
         * avg_wvlngth [um] - wavelengths corresponding to averaged spectrum
         * avg_spec [ppm] - averaged spectrum

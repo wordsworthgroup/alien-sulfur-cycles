@@ -23,18 +23,10 @@ m_SO2 = 1.064e-25 # [kg]
 mu_S = 0.03206 # [kg/mol]
 
 m_H2SO4 = 1.628e-25 # [kg]
-mu_h2so4 = 0.098078 # [kg/mol]
 rho_h2so4 = 1830.5 # [kg/m3]
 
 # EARTH SPECIFIC VALUES
-M_earth = 5.9721986*10**24 # [kg]
-R_earth = 6.371*10**6 # [m]
 mass_earth_ocean = 1.4*10**21 # [kg]
-
-eta_air = 1.6e-5 # [Pa/s]
-mu_air = 0.02896 #[kg/mol]
-c_p_air=1.003*1000 # [J/kg/K]
-R_air = 287.058 # [J/kg/K]
 
 def calc_rho_aero(w):
     '''
@@ -99,7 +91,7 @@ def K1(T):
     '''
     first acid dissociation constant of H2SO3
     in theory dependent on temperature but neglected here
-    source:
+    source: Neta & Huie (1985)
 
     input
         * T [K] - temperature (not actually used)
@@ -114,7 +106,7 @@ def K2(T):
     '''
     second acid dissociation constant of H2SO3
     in theory dependent on temperature but neglected here
-    source:
+    source: Neta & Huie (1985)
 
     input
         * T [K] - temperature (not actually used)
@@ -144,15 +136,14 @@ def K_H_SO2(T):
     K_H = K_H/mol_per_L_h2o # [Pa/M] (note M = mol/L)
     return K_H
 
-# convert pH to concentration of H+
 def H(pH):
     '''
     convert pH to concentration of H+
 
     input:
-        * pH
+        * pH [log10(M)] - pH of water
     output:
-        * h [M]- [H+]
+        * h [M] - [H+]
     '''
     h = 10**(-pH) # [M]
     return h
@@ -181,7 +172,7 @@ def HSO3(p_SO2,T,pH):
     inputs:
         * p_SO2 [Pa] - partial pressure of SO2 at ocean-atmosphere interface
         * T [K] - temperature of ocean
-        * pH - pH of ocean
+        * pH [log10(M)] - pH of ocean
 
     output:
         * hso3 [M] - [HSO3-]
@@ -288,7 +279,8 @@ class Sulfur_Cycle:
                  u_so2=2.3e-2):
         '''
         constructor for Sulfur_Cycle class
-        initilize Sulfur_Cycle object
+        initialize Sulfur_Cycle object
+
         inputs:
             * atm [Atm] - Atm object with atmospheric properties
             * type_obs [string] - two options either 'aero' (H2SO4-H2O) or 'gas' (SO2)
@@ -309,11 +301,14 @@ class Sulfur_Cycle:
             * m_aero [] - complex index of refraction of aerosol
             * lambda_stell [m] - wavelength of peak stellar spectrum
             ~~ gas parameters ~~
-            * u_so2 [kg/m2] - mass column SO2 neccessary for gas observation
+            * u_so2 [kg/m2] - mass column SO2 necessary for gas observation
         '''
-        self.atm = atm
+        self.atm = atm # Atm object to store info about planet and its atmosphere
+        # whether looking to observe H2SO4-H2O aerosols ('aero')
+        # or SO2 gas ('gas')
         self.type_obs = type_obs
         if type_obs=='aero':
+            # set up aero model parameters
             self.tau = tau
             self.r = r
             self.w = w
@@ -323,37 +318,38 @@ class Sulfur_Cycle:
             self.rho_aero = calc_rho_aero(self.w)
 
             # Mie parameters
+            # default G star
             if is_G==True:
                 self.lambda_stell = 0.556e-6 # [m]
                 self.m_aero = complex(1.4315,0.) # []
+            # default M star
             elif is_M==True:
                 self.lambda_stell = 1e-6 # [m]
                 self.m_aero = complex(1.422,1.53e-6) # []
+            # specific values
             else:
                 self.lambda_stell = lambda_stell # [m]
                 self.m_aero = m_aero # []
             self.Qe = None
 
         elif type_obs=='gas':
+            # set up gas model parameters
             self.u_so2 = u_so2
         else:
             raise Exception('must choose either "aero" or "gas" as type_obs input')
         # pressure of the tropopause (transition to stratosphere)
         self.p_strat = self.atm.p_transition_strat # [Pa]
+        # calculate critical S neccessary for S observation in atm
         self.calc_atm_S()
 
     def calc_atm_S(self):
         '''
-        calculate the atomospheric S necessary for atmospheric sulfur observation
+        calculate the atmospheric S necessary for atmospheric sulfur observation
         for aero obs: follows Sections 3.2-3.5 in LoWoMo19
         for gas obs: follows Section 3.1 in LoWoMo19
+
         inputs:
             * self
-            * is_return [bool] - whether to critical atm S values when called
-        outputs (optional):
-            * [# S atoms] critical atm # S atoms
-            * [moles] critical atm moles of S
-            * [kg] critical atm mass of S
         '''
         # to observe H2SO4-H2O aerosols
         if self.type_obs == 'aero':
@@ -397,16 +393,22 @@ class Sulfur_Cycle:
         if self.type_obs=='aero':
             # add H2SO4 S
             self.mol_S_atm += self.N_H2SO4/N_A # [moles]
+        # number of S atoms in atm
         self.N_S_atm = self.mol_S_atm*N_A # [# S atoms]
+        # mass of S in atm
         self.mass_S_atm = self.mol_S_atm*mu_S # [kg S]
 
 
     def calc_oc_S(self,num_oceans_earth,pH):
         '''
+        calculate S in ocean necessary for atmospheric sulfur observation
+        follows Section 3.7 in LoWoMo19
         must have called calc_atm_S before
+
         inputs:
             * self
-            * pH - pH of ocean water
+            * num_oceans_earth [#] - ocean mass in Earth ocean masses
+            * pH [log10(M)] - pH of ocean water
         '''
         T_surf = self.atm.planet.T_surf # [K]
         # critical concentration of S(IV) in the ocean
@@ -418,18 +420,31 @@ class Sulfur_Cycle:
 
     def calc_t_SIV(self,m_outgass_S_earth,is_include_atm=False,is_output=True):
         '''
+        calculate critical decay timescale for S(IV) to have observable S
+        follows Section 3.8 in LoWoMo19
+        must have called calc_atm_S & calc_oc_S before
+
         inputs:
             * self
             * m_outgass_S_earth [Earth avg S outgassing] - S outgassing rate
+            * is_include_atm [bool] - whether to include atmospheric S in N_SIV_crit
+            * is_output [bool] - whether to output t_SIV_crit at end of method
+
         output (optional):
             * t_SIV_crit [s] - critical S(IV) decay timescale for S observation
         '''
+        # mass of S outgassed
         m_outgass_SIV = 10e12*1e-3*m_outgass_S_earth # [kg S/yr]
+        # # S atoms outgassed
         self.N_SIV_outgass = m_outgass_SIV/mu_S*N_A # [atoms S/yr]
-        self.N_SIV_crit = self.N_S_oc
+        # add ocean S to critical S
+        self.N_S_crit = self.N_S_oc
+        # whether to include atmospheric S in critical S total
         if is_include_atm:
-            self.N_SIV_crit += self.N_S_atm
-        self.t_SIV_crit = self.N_SIV_crit/self.N_SIV_outgass # [yr]
+            self.N_S_crit += self.N_S_atm
+        # calculate critical decay timescale for S(IV) to have observable S
+        self.t_SIV_crit = self.N_S_crit/self.N_SIV_outgass # [yr]
+        # whether to return t_SIV_crit when method is called
         if is_output:
             return self.t_SIV_crit
 
@@ -438,9 +453,11 @@ class Sulfur_Cycle:
         calculate mass column SO2
         mainly intended for photochemical calculation
         must have already called calc_atm_S
+
         inputs:
             * self
-        outout:
+
+        output:
             * u_so2_boundary - [molecules/cm2] critical atoms of S in ocean-atmosphere for an observable haze layer
         '''
         # average molar mass of atmosphere at surface
@@ -454,8 +471,10 @@ class Sulfur_Cycle:
         calculate mixing ratios in stratosphere of SO2 and eq H2SO4
         mainly intended for generating simulated transit spectra inputs
         must have already called calc_atm_S
+
         input:
             * self
+
         outputs:
             * f_so2 [vmr] - stratospheric mixing ratio of SO2
             * f_h2so4 [vmr] - stratospheric mixing ratio of H2SO4

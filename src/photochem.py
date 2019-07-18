@@ -1,22 +1,25 @@
 ################################################################
 # photochemistry of SO2 to H2SO4 conversion
-# for lower bound on conversion timescale using photon delivery
-# as energy limiting factor 
+# for lower bound on conversion timescale using (X)UV photon
+# delivery as energy limiting factor
 ################################################################
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.integrate as integrate
 from scipy.interpolate import interp1d
 from cycler import cycler
 
 def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     '''
+    set up photochemical calculations for limiting photochemical conversion
+    timescales of SO2 to H2SO4
+
     inputs:
         * lambda_max [nm] - maximum wavelength cutoff for photodissociating
         * f_XUV [] - XUV factor to multiply solar spectrum by
         * f_UV [] - UV factor to multiply solar spectrum by
         * lambda_XUV_UV [nm] - wavelength at which XUV transitions to UV
+
     output:
         * cross_w_SO2 [cm2/particle] - cross sections of SO2, CO2, O2, H2O
         * cross_max [cm2/particle] - maximum cross section for each wavelength (no SO2)
@@ -52,7 +55,7 @@ def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     # apply XUV multiplier
     spectrum_photo[lambda_XUV_UV:,1] = spectrum_photo[91:,1]*f_UV
 
-    # set up evenly spaced in wavlength cross sections
+    # set up evenly spaced in wavelength cross sections
     cross_SO2 = f_as_SO2(spectrum_photo[:,0])
     cross_CO2 = f_as_CO2(spectrum_photo[:,0])
     cross_O2 = f_as_O2(spectrum_photo[:,0])
@@ -61,11 +64,13 @@ def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     cross = np.vstack((cross_CO2,cross_O2,cross_H2O))
     # maximum cross section across all gasses
     cross_max = np.amax(cross,axis=0)
+    
     return cross_w_SO2, cross_max, spectrum_photo
 
 def plot_stellar_spectrum(spectrum_photo,fig_name='stellar_spec_G',lambda_max=240):
     '''
     plot stellar spectrum
+
     inputs:
         * spectrum_photo [nm,photons/s/cm^2/nm] - stellar XUV-UV spectrum
         * fig_name [string] - optional, name of figure saved
@@ -83,6 +88,7 @@ def plot_stellar_spectrum(spectrum_photo,fig_name='stellar_spec_G',lambda_max=24
 def plot_cross_section(spectrum_photo,cross_w_SO2,cross_max,is_SO2=True,lambda_max=240):
     '''
     plot absorption cross sections of different gases
+
     inputs:
         * spectrum_photo [nm,photons/s/cm^2/nm] - stellar XUV-UV spectrum
         * cross_w_SO2 [cm2/particle] - cross sections of SO2, CO2, O2, H2O
@@ -120,10 +126,11 @@ def plot_cross_section(spectrum_photo,cross_w_SO2,cross_max,is_SO2=True,lambda_m
 def plot_SO2_tau(spectrum_photo,cross_w_SO2,u_SO2=5E+13):
     '''
     plot opacity (tau) of SO2 with an eye toward whether it's optically thick
+
     inputs:
-    * spectrum_photo [nm,photons/s/cm^2/nm] - stellar XUV-UV spectrum
-    * cross_w_SO2 [cm2/particle] - cross sections of SO2, CO2, O2, H2O
-    * u_SO2 [molecules/cm2] - SO2 mass column
+        * spectrum_photo [nm,photons/s/cm^2/nm] - stellar XUV-UV spectrum
+        * cross_w_SO2 [cm2/particle] - cross sections of SO2, CO2, O2, H2O
+        * u_SO2 [molecules/cm2] - SO2 mass column
     '''
     # maximum cross section for each wavelength including SO2
     cross_max_w_SO2 = np.amax(cross_w_SO2,axis=0)

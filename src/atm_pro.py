@@ -9,7 +9,7 @@ import src.h2o as h2o
 #############################################################
 # ideal gas constant
 R_gas = 8.31446 #[J/mol/K]
-# Avagadro's number
+# Avogadro's number
 N_A = 6.022141e23 # [particles/mol]
 
 # read in gas data
@@ -19,12 +19,14 @@ def T_transition_moist0(T,p_surf,T_surf,f_h2o,kappa):
     '''
     calculate temperature at which RH = 1 and atmosphere transitions
     to a moist adiabat
+
     inputs:
         * T [K] - local temperature
         * p_surf [Pa] - surface pressure
         * T_surf [K] - surface temperature
         * f_h2o [] - mixing ratio of H2O at the surface
         * kappa [J/kg/K] - R_air/c_p_air
+
     output:
         * difference between local pH2O and saturated pH2O at local T [Pa]
     '''
@@ -35,6 +37,7 @@ class Atm:
     '''
     Atm class
     atmospheric properties and atmospheric structure
+
     attributes:
         * planet - Planet object containing planetary properties
         * RH_surf [] - relative humidity at surface, set from input value
@@ -43,7 +46,7 @@ class Atm:
         * R_air_surf [J/kg/K] - specific gas constant for air at surface
         * ep [] - ratio of h2o molar mass to dry atmosphere molar mass
         * c_p_surf [J/kg/K] - specific heat at surface water levels
-        * kappa [] - exoponent for dry adiabat
+        * kappa [] - exponent for dry adiabat
         * delta_T [K] - temperature step size for integrate moist adiabat
         * T_transition_moist [K] - temperature at which
         * p_transition_moist [Pa] - pressure at which moist adiabat starts
@@ -75,7 +78,8 @@ class Atm:
     def __init__(self,pl,RH_surf,delta_T=0.1):
         '''
         constructor for Atm class
-        initilize Atm object
+        initialize Atm object
+
         inputs:
             * pl [Planet object] - Planet object containing planetary properties
             * RH_surf [] - relative humidity at the surface
@@ -114,24 +118,11 @@ class Atm:
         if T_transition_moist0(self.planet.T_surf,self.planet.p_surf,self.planet.T_surf,self.f_h2o_surf,self.kappa)>0:
             self.issatsurf = True
 
-        self.T_transition_moist = None
-        self.p_transition_moist = None
-
-        self.p_transition_strat = None
-        self.f_h2o_strat = None
-
         self.standard_ps = np.zeros(150)
 
         self.tp_pro_vec = np.vectorize(self.tp_pro)
         self.h2o_pro_vec = np.vectorize(self.h2o_pro)
 
-        # functions with pressure as input
-        # must be set by calling set_up_atm_pro method
-        self.p2T = None
-        self.p2p_h2o = None
-
-        self.rho = None
-        self.eta = None
 
     def calc_c_p(self,T,f_dry=1):
         '''
@@ -139,9 +130,11 @@ class Atm:
         source: A.6 of Fundamentals of Thermodynamics Borgnakke & Sonntag 2009
         c_p_i(T) = 1000*(sum over j of c_p_j*T^j/1000) for j=0-3
         c_p(T) = sum over i of c_p_i(T)*q_i
+
         inputs:
             * T [K] - local temperature
             * f_dry [volume mixing ratio] - volume mixing ratio of dry species
+
         outputs:
             * c_p [J/kg/K] - specific heat capacity
         '''
@@ -149,7 +142,7 @@ class Atm:
         theta = T/1000.
         # calculate dry component of heat capacity
         c_p = f_dry/mu_avg*np.sum(gas_properties['molar_mass'][:-1]*self.planet.atm_comp_dry*(gas_properties['c_p_0'][:-1] + gas_properties['c_p_1'][:-1]*theta + gas_properties['c_p_2'][:-1]*theta**2 + gas_properties['c_p_3'][:-1]*theta**3))
-        # if neccessary add water's contribution to heat capacity
+        # if necessary add water's contribution to heat capacity
         if f_dry!= 1:
             c_p += h2o.mu/mu_avg*(1-f_dry)*(gas_properties['c_p_0'][-1] + gas_properties['c_p_1'][-1]*theta + gas_properties['c_p_2'][-1]*theta**2 + gas_properties['c_p_3'][-1]*theta**3)
         return c_p*1000
@@ -159,11 +152,13 @@ class Atm:
         '''
         calculate d ln p / d ln T for a moist adiabat
         following Wordsworth & Pierrehumbert 2013b
+
         inputs:
             * dT [K] - change in local temperature
             * T [K] - local temperature
             * p [Pa] - local pressure
             * ph2o_last [Pa] - local partial pressure of water at last T step
+
         outputs:
             * dlnpdlnT [ln(Pa)/ln(K)] - derivative to advance moist adiabat
             * ph2o [Pa] - local partial pressure of water
@@ -184,8 +179,10 @@ class Atm:
         '''
         calculate pressure-temperature profile in region of atmosphere following a
         pseudo moist adiabat
+
         inputs:
             * self
+
         outputs:
             * Ts [K] - temperatures
             * np.exp(lnp)=p [Pa] - pressures
@@ -213,12 +210,14 @@ class Atm:
         '''
         calculate the temperature for a local pressure for a atmosphere with
         a (partial) moist adiabat
+
         inputs:
             * self
             * p [Pa] - local pressure
             * tp_pro_moist [function] - a function that calculates temperature
                                         as a function of pressure within a given
                                         atmosphere's moist adiabat
+
         output:
             * T [K] - local temperature (from given pressure)
         '''
@@ -237,12 +236,14 @@ class Atm:
         '''
         calculate the local partial pressure of H2O for a local pressure
         for a atmosphere with a (partial) moist adiabat
+
         inputs:
             * self
             * p [Pa] - local pressure
             * tp_pro_moist [function] - a function that calculates temperature
                                         as a function of pressure within a given
                                         atmosphere's moist adiabat
+
         output:
             * p_h2o [Pa] - local partial pressure H2O (from given pressure)
         '''
@@ -260,6 +261,9 @@ class Atm:
     def set_up_atm_pro(self):
         '''
         set up atmospheric profile
+
+        input:
+            * self
         '''
         # calculate T at which RH first exceeds 100%
         if self.isdry:
@@ -321,12 +325,14 @@ class Atm:
 
     def p2atm_comp(self,p):
         '''
-        calcualte atmospheric composition accounting for varying water content
+        calculate atmospheric composition accounting for varying water content
         as a function of pressure
         only will work once set_up_atm_pro has been called!!
+
         inputs:
             * self
             * p [Pa] - local pressure
+
         output:
             * X [vmr] - mixing ratios
         '''
@@ -340,10 +346,12 @@ class Atm:
     def p2mu(self,p):
         '''
         calculate average atmospheric molar mass (mu) properly accounting for water vapor content
+
         inputs:
             * self
             * p [Pa] - local pressure
-        ouput:
+
+        output:
             * mu [kg/mol] - avg atmospheric molar mass @ pressure p
         '''
         # weight avg molar mass by mixing ratio
@@ -356,9 +364,11 @@ class Atm:
         calculate viscosity of air (eta) as a function of local pressure
         follow Sutherland's law for temperature dependence of viscosity
         follow Wilkes' rule for mixtures for combining different gases into "air"
+
         inputs:
             * self
             * p [Pa] - local pressure
+
         output:
             * eta [Pa s] - dynamic viscosity
         '''
@@ -380,9 +390,11 @@ class Atm:
     def p2RH(self,p):
         '''
         calculate relative humidity of air (RH) at local pressure level
+
         inputs:
             * self
             * p [Pa] - local pressure
+
         output:
             * RH [] - local relative humiduty
         '''
@@ -394,6 +406,7 @@ class Atm:
     def setup_z(self):
         '''
         set up functions to translate p to z and vice versa
+
         input:
             * self
         '''
@@ -413,8 +426,10 @@ class Atm:
         dz = - (R T)/(p g mu) dp
         integrate this expression from surface using Euler's method
         up into stratosphere
+
         inputs:
             * self
+
         outputs:
             * p [Pa] - pressures
             * z [m] - altitudes
@@ -441,9 +456,11 @@ class Atm:
         '''
         calculate atmospheric density (rho) assuming ideal gas law
         => rho = p*mu/R_gas/T
+
         inputs:
             * self
             * p [Pa] - local pressure
+
         outputs:
             * rho [kg/m3] - density
         '''

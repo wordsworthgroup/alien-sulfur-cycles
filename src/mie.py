@@ -32,6 +32,9 @@ def mie_coeff(m, x, nmax):
 	by = ss.jv(nu,y)*(0.5*np.pi/y)**0.5
 	yx = ss.yv(nu,x)*(0.5*np.pi/x)**0.5
 
+	# change inf evals to very very large number instead 
+	yx[np.isinf(yx)] = 1e100
+
 	hx = bx + 1j*yx
 	b1x = np.zeros(nmax,dtype=complex)
 	b1x[0] = np.sin(x)/x
@@ -107,7 +110,6 @@ def mie_scatter(m,x0=None,xparams=None,vary_lambda=True,nmax=100,nx=500):
 	# otherwise just take range where Mie theory is accurate
 	else:
 		x = np.logspace(-2,2,nx)
-
 	# number of terms in polynomial expansion
 	n    = np.arange(1,nmax+1)
 	y    = m*x
