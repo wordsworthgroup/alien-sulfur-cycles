@@ -25,4 +25,4 @@ To use LoWoMo19's sulfur model with your own inputs, you can utilize main.py. Ma
 
 ```python main.py```
 
-within this repo’s directory. Results will be printed, and any plots produced will be saved under my_results/.
+within this repo’s directory. Results will be saved under my_results/ as described in main.py.
