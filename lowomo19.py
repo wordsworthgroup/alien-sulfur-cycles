@@ -56,6 +56,8 @@ mu_n2 = 0.028014 #kg/mol
 mu_co2 = 0.04401 #kg/mol
 rho_h2o = 1000 #[kg/m3]
 
+R_gas = 8.31446 #[J/mol/K]
+
 # color scheme where 3 colors are necessary
 colors3 = ['#002fa7','deepskyblue','#C1DBE6']
 
@@ -171,8 +173,8 @@ cross_w_SO2, cross_max, spectrum_photo_G = pc.set_up_photochem()
 # and UV flux by 0.1x
 spectrum_photo_M = pc.set_up_photochem(f_XUV=10.,f_UV=0.1)[2]
 # calculate conversion timescale from (13) using Simpson's rule
-t_G = (0.5*integrate.simps(cross_max*spectrum_photo_G[:,1],spectrum_photo_G[:,0],even='last'))**(-1) #[s]
-t_M = (0.5*integrate.simps(cross_max*spectrum_photo_M[:,1],spectrum_photo_M[:,0],even='last'))**(-1) #[s]
+t_G = (0.25*integrate.simps(cross_max*spectrum_photo_G[:,1],spectrum_photo_G[:,0],even='last'))**(-1) #[s]
+t_M = (0.25*integrate.simps(cross_max*spectrum_photo_M[:,1],spectrum_photo_M[:,0],even='last'))**(-1) #[s]
 
 # print results of limiting timescales (without SO2 photodissociation)
 t = PrettyTable(['star','t [s]', 't [days]'])
@@ -226,9 +228,23 @@ print('\n-----------------------------------------------\n'
 print('creating inputs for transmission spectra')
 # vary vertical tau by orders of magnitude
 taus = np.logspace(-4,1,6)
+# calc scale height of stratosphere for haze cutoff
+H = R_gas*Earth_atm.planet.T_strat/Earth_atm.planet.g/Earth_atm.p2mu(Earth_atm.p_transition_strat)*1e-3 # [km]
 for tau in taus:
     sts.input_pro(Earth_atm,1000,tau,1.e-6,0,False)
-    print('input for tau_h2so4 = %1.1E, r_h2so4 = 1 um saved'%tau)
+    print('input for tau_h2so4 = %1.1E, r_h2so4 = 1 um, no haze cutoff saved'%tau)
+    sts.input_pro(Earth_atm,1000,tau,1.e-6,0,False,haze_h=2*H)
+    print('input for tau_h2so4 = %1.1E, r_h2so4 = 1 um, haze cutoff = %1.2F km (2 scale heights) saved'%(tau,2*H))
+# vary haze cutoff height
+heights = [1,5,10,20,50,100]
+for h in heights:
+    sts.input_pro(Earth_atm,1000,tau,1.e-6,0,False,haze_h=h)
+    print('input for tau_h2so4 = 0.1, r_h2so4 = 1 um, haze cutoff = %1.0F km saved'%h)
+# vary aerosol particle size
+rs = np.linspace(1,10,10)*1.e-7 # [m]
+for r in rs:
+    sts.input_pro(Earth_atm,1000,0.1,r,0,False)
+    print('input for tau_h2so4 = 0.1, r_h2so4 = %1.1F um, no haze cutoff saved'%(r*1e6))
 #clear
 sts.input_pro(Earth_atm,1000,0.1,0,0,False)
 print('input for clear sky saved')
@@ -245,20 +261,21 @@ print('\ncreating Figure 3')
 # FIGURE 3
 
 # set up color scheme for plot
-n = 6
+n = 7
 new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
 plt.rc('axes', prop_cycle=cycler('color', new_colors))
 
 # plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_h2so4h2o_0e+00_r_water_0e+00.txt'
 avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
 plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
 # plot spectra of various taus considered for r = 1 um
-taus = ['0.0001','0.001','0.01','0.1','1']
-for i,x in enumerate(['-04','-03','-02','-01','+00']):
-    f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
+taus = ['0.0001','0.001','0.01','0.1','1', '10']
+for i,x in enumerate(['-04','-03','-02','-01','+00', '+01']):
+    # f = './data/simtransspec/trans_specs_h_2/trans_spect_atm_pro_tau_1e'+x+'_r_sulfur_1e-06_r_water_0e+00.txt'
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_h2so4h2o_1e-06_r_water_0e+00_haze_h_12.txt'
     avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
-    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\tau_{haze}$=%s'%(taus[i]))
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\delta$=%s'%(taus[i]))
 # plot logistics
 plt.xscale('log')
 plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
@@ -274,8 +291,112 @@ plt.close()
 
 print('Figure 3 saved')
 
+
+# show what no haze cutoff looks like with varying tau
+print('\ncreating Supplemental Figure spec_no_cutoff')
+print('to test effect of no haze cutoff')
+
+# set up color scheme for plot
+n = 7
+new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+# plot clear spectrum
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_h2so4h2o_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# plot spectra of various taus considered for r = 1 um
+taus = ['0.0001','0.001','0.01','0.1','1']
+for i,x in enumerate(['-04','-03','-02','-01','+00']):
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e'+x+'_r_h2so4h2o_1e-06_r_water_0e+00.txt'
+    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$\delta$=%s'%(taus[i]))
+# plot logistics
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+plt.tick_params(axis='both', which='major')
+plt.xlim(0.3,50)
+# order legend labels to match plot order
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+plt.savefig('figs_sup/spec_no_cutoff.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+
+print('Supplemental Figure spec_no_cutoff saved')
+
+print('\ncreating Supplemental Figure spec_vary_cutoff')
+print('to test effect of varying haze height cutoff')
+
+# set up color scheme for plot
+n = 8
+new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+# plot clear spectrum
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_h2so4h2o_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# plot different haze cutoff height spectra
+for h in heights:
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_1e-06_r_water_0e+00_haze_h_%1.f.txt'%h
+    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$h$=%1.f km'%h)
+# plot logistics
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+plt.tick_params(axis='both', which='major')
+plt.xlim(0.3,50)
+# order legend labels to match plot order
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+plt.savefig('figs_sup/spec_vary_cutoff.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+
+print('Supplemental Figure spec_vary_cutoff saved')
+
+print('\ncreating Supplemental Figure spec_smallest_r')
+print('to test smallest aerosol particle radius at which Mie vs Rayleigh scattering is distinguishable')
+
+# plot spectra of various H2SO4-H2O aerosol radii considered for tau = 0.1
+# set up color scheme for plot
+n = 11
+new_colors = [plt.get_cmap('jet_r')(1. * (n-i-1)/n) for i in range(n)]
+plt.rc('axes', prop_cycle=cycler('color', new_colors))
+
+# plot clear spectrum
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_h2so4h2o_0e+00_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
+# plot different r spectra
+for i in range(1,10):
+    f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_'+str(i)+'e-07_r_water_0e+00.txt'
+    avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+    plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 0.'+str(i)+r' $\mu$m')
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_1e-06_r_water_0e+00.txt'
+avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
+plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'$r$ = 1 $\mu$m')
+# plot logistics
+plt.xscale('log')
+plt.xticks([0.5,1,5,10,50,100],['0.5','1','5','10','50','100'])
+plt.xlabel(r'wavelength [$\mu$m]')
+plt.ylabel('transit depth [ppm]')
+plt.xlim(0.3,50)
+plt.tick_params(axis='both', which='major')
+# order legend labels to match plot order
+handles, labels = plt.gca().get_legend_handles_labels()
+plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
+
+
+plt.savefig('figs_sup/spec_smallest_r.pdf',bbox_inches='tight',transparent=True)
+plt.close()
+print('Supplemental Figure spec_smallest_r saved\n')
+
 # plot transmission spectra with H2SO4-H2O aerosols vs different water clouds
-print('creating Supplemental Figure other_scatters')
+print('creating Supplemental Figure spec_other_scatters')
 print('to test spectra distinguishable when high & low water clouds are present vs H2SO4-H2O aerosols')
 
 # plot spectra with various scatters/absorbers present
@@ -285,22 +406,22 @@ new_colors = [plt.get_cmap('Blues_r')(1. * (n-i-1)/n) for i in range(n)]
 plt.rc('axes', prop_cycle=cycler('color', new_colors))
 
 # plot clear spectrum
-f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_sulfur_0e+00_r_water_0e+00.txt'
+f = './data/simtransspec/trans_spect_atm_pro_tau_0e+00_r_h2so4h2o_0e+00_r_water_0e+00.txt'
 avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
 plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='clear')
 
 # plot low water clouds
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_5e-06.txt'
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_0e+00_r_water_5e-06.txt'
 avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
 plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='low water clouds')
 
 # plot high water clouds
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_0e+00_r_water_1e-04.txt'
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_0e+00_r_water_1e-04.txt'
 avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
 plt.plot(avg_wvlngth, avg_spec,lw='0.9',label='high water clouds')
 
 # plot H2SO4-H2O aerosols
-f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_sulfur_1e-06_r_water_0e+00.txt'
+f = './data/simtransspec/trans_spect_atm_pro_tau_1e-01_r_h2so4h2o_1e-06_r_water_0e+00_haze_h_12.txt'
 avg_wvlngth, avg_spec = sts.calc_avg_spec(f)
 plt.plot(avg_wvlngth, avg_spec,lw='0.9',label=r'H$_2$SO$_4$-H$_2$O aerosols')
 # plot logistics
@@ -313,9 +434,9 @@ plt.xlim(0.3,50)
 # order legend labels to match plot order
 handles, labels = plt.gca().get_legend_handles_labels()
 plt.legend(handles[::-1], labels[::-1],bbox_to_anchor=(1.04,0.5), loc="center left", borderaxespad=0)
-plt.savefig('figs_sup/other_scatters.pdf',bbox_inches='tight',transparent=True)
+plt.savefig('figs_sup/spec_other_scatters.pdf',bbox_inches='tight',transparent=True)
 plt.close()
-print('Supplemental Figure other_scatters saved')
+print('Supplemental Figure spec_other_scatters saved')
 
 
 ################################################################
@@ -352,7 +473,7 @@ print('Figure 5 saved')
 print('creating Figure 6')
 for i,m_oc in enumerate([0.001,1,1000]):
     f = sulfur.S_atm_ocean_frac(pHs,m_oc,Earth)
-    plt.plot(pHs,f,label=r'M$_\mathrm{ocean}$ = '+str(m_oc)+
+    plt.plot(pHs,f,label=r'M$_\mathrm{ocean}$ = '+str(m_oc)+ ' ' +
              r'M$_{\bigoplus \mathrm{ocean}}$',c=colors3[2-i])
 plt.xlabel('pH')
 plt.xlim(1,14)
@@ -409,7 +530,7 @@ u_so2_lim = 1e-2*u_so2_b # [kg/m3]
 
 # set up standard sulfur cycle objects for Earth-baseline conditions
 best_aero_Earth = sulfur.Sulfur_Cycle(Earth_atm,'aero')
-lim_aero_G_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_G_lim,alpha=1.,t_convert=t_G,t_mix=t_mix*3)
+lim_aero_G_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_G_lim,alpha=1.,t_convert=t_G)
 lim_aero_M_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'aero',r=r_M_lim,alpha=1.,t_convert=t_M,is_M=True,is_G=False)
 best_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm,'gas',u_so2=u_so2_b)
 lim_gas_Earth = sulfur.Sulfur_Cycle(Earth_atm_dry,'gas',u_so2=u_so2_lim)
@@ -571,7 +692,7 @@ f_h2o_surfs = RH_h2o_surfs*h2o.p_sat(T_earth)/p_surf_earth # []
 f_h2o_surf_b = RH_earth*h2o.p_sat(T_earth)/p_surf_earth # []
 axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,0]/N_S_base0,c='#ff8c00',label='aerosol')
 axarr[2,1].plot(f_h2o_surfs,N_S_f_h2os[:,1]/N_S_base1,c='#002fa7',label='gas')
-axarr[2,1].axvline(f_h2o_surf_b,ls='--',c='0.8',label='Earth value')
+axarr[2,1].axvline(f_h2o_surf_b,ls='--',c='0.8',label='Earth-like value')
 axarr[2,1].set_xscale('log')
 
 # plot logistics
@@ -673,8 +794,8 @@ ax1.add_patch(interesting_oc)
 ax2.add_patch(interesting_oc2)
 
 # ocean size for which pH = 6 and t_SIV_crit = 0.1 yr
-oc_aero_lM = 2.6e-3 # [Earth oc]
-oc_aero_lG = 3.5e-3 # [Earth oc]
+oc_aero_lM = 1.3e-3 # [Earth oc]
+oc_aero_lG = 1.5e-3 # [Earth oc]
 h_aero_lM = oc_aero_lM*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 h_aero_lG = oc_aero_lG*mass_earth_ocean/rho_h2o/4./np.pi/R_earth**2 # [m]
 

@@ -18,11 +18,11 @@ To reproduce the calculations and figures in LoWoMo19, simply run:
 
 within this repo’s directory. Results relevant to LoWoMo19 analysis are printed. Figures included in the paper are saved under figs/ in the directory you're running lowomo19 from. (Note Figure 1 is not reproduced as it is a schematic illustration.)  Additional figures relevant to analysis but not included in the paper are saved under figs_sup/. 
 
-Inputs for spectra are saved under spec_inputs/. The code for generating spectra from inputs is not included in this repo but can be accessed via Caroline Morley [here](https://www.carolinemorley.com/models). Resulting spectra for each generated input are included under data/simtransspec/. 
+Inputs for spectra are saved under spec_inputs/. The code for generating spectra from inputs is not included in this repo but is described in [Morley et al. 2017](https://arxiv.org/pdf/1708.04239.pdf). Resulting spectra by Caroline Morley for each generated input are included under data/simtransspec/. 
 
 ### Sulfur Model
 To use LoWoMo19's sulfur model with your own inputs, you can utilize main.py. Make your desired adjustments for planet and model parameters within main.py as instructed by comments. Then run:
 
 ```python main.py```
 
-within this repo’s directory. Results will be printed and any plots produced will be saved under my_results/.
+within this repo’s directory. Results will be printed, and any plots produced will be saved under my_results/.

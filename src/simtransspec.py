@@ -15,7 +15,7 @@ m_H2SO4 = 1.628e-25 # [kg]
 mu_h2so4 = 0.098078 # [kg/mol]
 rho_h2so4 = 1830.5 # [kg/m3]
 
-def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
+def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p,H,haze_h):
     '''
     create the profile of H2SO4-H2O aerosols
     H2SO4-H2O aerosol number density at each pressure layer
@@ -30,6 +30,8 @@ def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
         * n [#] - number of pressure layers in profile
         * p_strat [Pa] - pressure at tropopause (beginning of stratosphere)
         * p [Pa] - pressure profile
+        * H [m] - scale height of stratosphere
+        * haze_h [km] - haze vertical extent cutoff (distance from tropopause to n_haze=0)
 
     output:
         * n_aero [# water particles/m3] - number density of H2SO4-H2O aerosols
@@ -38,9 +40,16 @@ def h2so4h2o_profile(pH2SO4,r,T_strat,w_h2so4,n,p_strat,p):
     '''
     # empty H2SO4 profile
     n_h2so4 = np.zeros(n)
+    # pressure at top of haze (if have a haze cutoff)
+    if haze_h!=None:
+        p_top = p_strat*np.exp(-haze_h*1e3/H)
+    else:
+        # if have no haze cutoff
+        p_top = 0.
     for i in range(n):
-        if pH2SO4[i]/sulfur.calc_p_sat_h2so4(T_strat)>1. and p[i]<p_strat:
+        if p[i]>p_top and p[i]<p_strat:
             n_h2so4[i] = pH2SO4[i]/k_B/T_strat
+            # print('in haze, p=',p[i])
     # H2SO4 mass per aerosol
     m_h2so4_per_aero = w_h2so4*np.pi*r**3*4./3*rho_h2so4
     # number of H2SO4 molecules per aerosol
@@ -82,7 +91,7 @@ def water_cloud_profile(p,p_start,n,n_water,cloud_thickness,atm):
     return n_h2o
 
 def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
-              is_high_clouds=False,w=0.75,p_min=1):
+              is_high_clouds=False,w=0.75,p_min=1,haze_h=None):
     '''
     generate profile for all the constituent parts of the atmosphere
     that (can) affect the transmission spectra: gases and particles
@@ -103,6 +112,7 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
         * is_high_clouds [boolean] - True => high clouds, false => low clouds
         * w [kg/kg] - weight percent H2SO4 in aerosol
         * p_min [Pa] - minimum pressure of atmosphere profile
+        * haze_h [km] - optional, vertical thickness of haze (distance from tropopause to n_haze=0)
 
     outputs:
         * nothing but saves profile as a csv file of profile
@@ -137,9 +147,12 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
 
     # number density of H2SO4-H2O aerosols of radius r
     if r_h2so4h2o!=0:
+        # scale height in straosphere
+        mu_air = atm.p2mu(atm.p_transition_strat)
+        H = R_gas*atm.planet.T_strat/atm.planet.g/mu_air # [m]
         profile[:,7] = h2so4h2o_profile(f_h2so4*profile[:,0],
                                           r_h2so4h2o,atm.planet.T_strat,w,n,atm.p_transition_strat,
-                                          profile[:,0])
+                                          profile[:,0],H,haze_h)
 
     # number density of water cloud particles
     if r_cloud!=0:
@@ -158,7 +171,10 @@ def input_pro(atm,n,tau,r_h2so4h2o,r_cloud=0,
     # make profile into dataframe for easy conversion to csv file
     profile_df = pd.DataFrame(profile, columns=['p','T','pH2O','pSO2','pN2','pO2','pCO2','n_s_aero_r_%1.e'%r_h2so4h2o,'n_water_cloudrop_r_%1.e'%r_cloud])
     # name output file based on inputs
-    atm_name = 'tau_%1.e_r_h2so4h2o_%1.e_r_water_%1.e'%(tau,r_h2so4h2o,r_cloud)
+    if haze_h != None:
+        atm_name = 'tau_%1.e_r_h2so4h2o_%1.e_r_water_%1.e_haze_h_%1.f'%(tau,r_h2so4h2o,r_cloud,haze_h)
+    else:
+        atm_name = 'tau_%1.e_r_h2so4h2o_%1.e_r_water_%1.e'%(tau,r_h2so4h2o,r_cloud)
     # save profile as csv
     profile_df.to_csv('./spec_inputs/atm_pro_'+atm_name+'.csv',index=False)
 

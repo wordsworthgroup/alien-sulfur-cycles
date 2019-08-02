@@ -32,17 +32,34 @@ def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     # col 1 - photon flux per wavelength [photons/s/cm^2/nm]
 
     # import absorption spectrum data for various molecules
+    # SO2
+    # sources:
+    #   * Hamdy et al. 1991, http://satellite.mpic.de/spectral_atlas/cross_sections/Sulfur%20compounds/Inorganic%20S-compounds/SO2_Hamdy(1991)_298K_14.7-101.7nm.txt
+    #   * Manatt & Lane 1993, http://satellite.mpic.de/spectral_atlas/cross_sections/Sulfur%20compounds/Inorganic%20S-compounds/SO2_ManattLane(1993)_293K_106.1-403.7nm.txt
     asSO2 = np.genfromtxt('./data/abs_x/axsSO2.dat')
-    asSO2_2 = np.genfromtxt('./data/abs_x/axsSO2_2.dat')
+    # CO2
+    # source:
+    #   * Huestis & Berkowitz 2010, http://satellite.mpic.de/spectral_atlas/cross_sections/Carbon-oxides/CO2_HuestisBerkowitz(2010)_300K_0.1254-201.6nm(evaluation).txt
     asCO2 = np.genfromtxt('./data/abs_x/axsCO2.dat')
+    # O2
+    # sources:
+    #   * Brion 1979, http://satellite.mpic.de/spectral_atlas/cross_sections/Oxygen/O2_Brion(1979)_298K_4.1-248nm(e,e).txt
+    #   * Lu 2010, http://satellite.mpic.de/spectral_atlas/cross_sections/Oxygen/O2_Lu(2010)_303.7K_115-180nm.txt
+    #   * Kockarts 1976, http://satellite.mpic.de/spectral_atlas/cross_sections/Oxygen/O2_Kockarts(1976)_300K_176-203nm.txt
+    #   * Yoshino et al. 1988, http://satellite.mpic.de/spectral_atlas/cross_sections/Oxygen/O2_JPL-2010(2011)_298K_205-245nm(rec).txt
     asO2 = np.genfromtxt('./data/abs_x/axsO2.dat')
+    # H2O
+    # sources:
+    #   * Chan et al. 1993, http://satellite.mpic.de/spectral_atlas/cross_sections/Hydrogen+water/H2O_Chan(1993)_298K_6.20-206.64nm(e,e).txt
+    #   * Mota et al. 2005, http://satellite.mpic.de/spectral_atlas/cross_sections/Hydrogen+water/H2O_Mota(2005)_298K_114.8-193.9nm.txt
     asH2O = np.genfromtxt('./data/abs_x/axsH2O.dat')
 
     # combine sources of absorption spectrums as needed and interpolate to
     # match 1 nm spaced solar spectrum
-    SO2 = np.concatenate((np.array([[0,0]]),asSO2_2,asSO2))
+    SO2 = np.concatenate((np.array([[0,0]]),asSO2))
     f_as_SO2 = interp1d(SO2[:,0],SO2[:,1])
-    f_as_CO2 = interp1d(asCO2[:,0],asCO2[:,1])
+    CO2 = np.concatenate((np.array([[0,0]]),asCO2,np.array([[300,0]])))
+    f_as_CO2 = interp1d(CO2[:,0],CO2[:,1])
     O2 = np.concatenate((np.array([[0,0]]),asO2,np.array([[300,0]])))
     f_as_O2 = interp1d(O2[:,0],O2[:,1])
     H2O = np.concatenate((np.array([[0,0]]),asH2O,np.array([[300,0]])))
@@ -64,7 +81,7 @@ def set_up_photochem(lambda_max=240,f_XUV=1,f_UV=1,lambda_XUV_UV=91):
     cross = np.vstack((cross_CO2,cross_O2,cross_H2O))
     # maximum cross section across all gasses
     cross_max = np.amax(cross,axis=0)
-    
+
     return cross_w_SO2, cross_max, spectrum_photo
 
 def plot_stellar_spectrum(spectrum_photo,fig_name='stellar_spec_G',lambda_max=240):
@@ -98,7 +115,7 @@ def plot_cross_section(spectrum_photo,cross_w_SO2,cross_max,is_SO2=True,lambda_m
     '''
     # gas labels
     labels = [r'SO$_2$',r'CO$_2$',r'O$_2$', r'H$_2$O']
-    n = len(labels) + 3
+    n = len(labels) + 1
     # set up colors
     new_colors = [plt.get_cmap('Blues')(1. * (n-i-1)/n) for i in range(n)]
     plt.rc('axes', prop_cycle=cycler('color', new_colors))
@@ -136,7 +153,7 @@ def plot_SO2_tau(spectrum_photo,cross_w_SO2,u_SO2=5E+13):
     cross_max_w_SO2 = np.amax(cross_w_SO2,axis=0)
     # plot (max) opacity of SO2, tau
     # tau = cross section x mass column SO2
-    plt.plot(spectrum_photo[:,0],cross_max_w_SO2*u_SO2)
+    plt.plot(spectrum_photo[:,0],cross_max_w_SO2*u_SO2,c='k',lw=2)
     plt.axhline(1,c='0.8',ls='--')
     plt.xlabel(r'$\lambda$ [nm]')
     plt.ylabel(r'$\tau$ []')

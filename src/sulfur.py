@@ -1,3 +1,7 @@
+################################################################
+# heart of sulfur cycle calculations
+################################################################
+
 import numpy as np
 import src.atm_pro as atm_pro
 import src.mie as mie
@@ -434,9 +438,9 @@ class Sulfur_Cycle:
             * t_SIV_crit [s] - critical S(IV) decay timescale for S observation
         '''
         # mass of S outgassed
-        m_outgass_SIV = 10e12*1e-3*m_outgass_S_earth # [kg S/yr]
+        self.m_outgass_SIV = 10e12*1e-3*m_outgass_S_earth # [kg S/yr]
         # # S atoms outgassed
-        self.N_SIV_outgass = m_outgass_SIV/mu_S*N_A # [atoms S/yr]
+        self.N_SIV_outgass = self.m_outgass_SIV/mu_S*N_A # [atoms S/yr]
         # add ocean S to critical S
         self.N_S_crit = self.N_S_oc
         # whether to include atmospheric S in critical S total
