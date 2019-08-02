@@ -235,8 +235,9 @@ S_outgass = 1 # [avg modern Earth S outgassing rate = 10e9 kg S/yr]
 # SET RUN NAME HERE
 # run name under which your results will be saved
 # if you set the same name twice, your results will be overwritten
-# presently, results are simply printed to terminal and saved to a csv
-# planet parameters are also saved to a csv in case you are forgetful
+# presently, results are simply saved to a csv
+# planet and model parameters are also saved out to a text file
+# in case you are forgetful
 name = 'arrakis' # https://en.wikipedia.org/wiki/Arrakis
 
 
@@ -246,17 +247,15 @@ name = 'arrakis' # https://en.wikipedia.org/wiki/Arrakis
 
 # this function performs your calculation for t_SIV*
 # (critical decay timescale of S(IV) in ocean for observable sulfur)
-# pending how you entered in ocean parameters, you will either
-# get the results back as a printed output in the terminal
-# or as a plot saved in ./my_results/
+# you will get the results back as a csv file my_results/NAME_results.csv
 # (if you haven't edited the file setup structure)
 
 # for the more intrepid user, this function returns a
 # Sulfur_Cycle object from the calculations from which you can access
 # many stages of potential interest from the calculation . . .
-# if you read the documentation of ./src/sulfur.py to figure out the setup :)
+# if you read the documentation of src/sulfur.py to figure out the setup :)
 
-# check out ./src/user_run.py for more information on how this function works
+# check out src/user_run.py for more information on how this function works
 # if you're having issues
 s_cyc = user_run.user_run(R_p,M_p,T_surf,T_strat,p_surf,f_h2,f_he,f_n2,f_o2,f_co2,
                           RH_surf,type_obs,is_best_params,is_limiting_params,

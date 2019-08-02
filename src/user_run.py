@@ -100,7 +100,7 @@ def user_run(R_p,M_p,T_surf,T_strat,p_surf,f_h2,f_he,f_n2,f_o2,f_co2,
     t_SIV_crit = S_cyc.calc_t_SIV(S_outgass)
 
     # update user that run worked
-    print('successful run.\n')
+    print('successful run for planet %s.\n'%name)
 
     # SAVE RESULTS
 
